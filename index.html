@@ -11,10 +11,19 @@
       padding: 20px;
       background-color: #f0f8ff;
     }
+    h1 {
+      margin-bottom: 5px;
+    }
+    #instructions {
+      font-size: 14px;
+      color: #555;
+      margin-bottom: 20px;
+    }
     #current-word {
       font-size: 48px;
       font-weight: bold;
       margin: 30px 0;
+      text-transform: uppercase;
     }
     input[type="text"] {
       font-size: 24px;
@@ -24,9 +33,9 @@
       margin-bottom: 20px;
     }
     button {
-      font-size: 20px;
-      padding: 15px 30px;
-      margin: 10px;
+      font-size: 18px;
+      padding: 12px 25px;
+      margin: 5px;
       border: none;
       border-radius: 8px;
       cursor: pointer;
@@ -38,6 +47,8 @@
     #new-word-btn {
       background-color: #007bff;
       color: white;
+      font-size: 14px;
+      padding: 8px 15px;
     }
     #scoreboard {
       font-size: 20px;
@@ -52,13 +63,19 @@
 </head>
 <body>
   <h1>WordLoop</h1>
-  <div id="current-word">loop</div>
+  <div id="instructions">Change one letter at a time to create real words.</div>
+  <div id="current-word">LOOP</div>
   <div id="timer">Time left: 120s</div>
   <input type="text" id="word-input" placeholder="Enter next word" />
   <br>
   <button id="submit-btn">Submit</button>
+  <br>
   <button id="new-word-btn">New Word</button>
   <div id="scoreboard">Score: 0</div>
+
+  <audio id="correct-sound" src="https://www.soundjay.com/buttons/sounds/button-4.mp3"></audio>
+  <audio id="wrong-sound" src="https://www.soundjay.com/buttons/sounds/button-10.mp3"></audio>
+  <audio id="end-sound" src="https://www.soundjay.com/button/sounds/button-3.mp3"></audio>
 
   <script>
     let currentWord = 'loop';
@@ -71,6 +88,9 @@
     const input = document.getElementById('word-input');
     const scoreboard = document.getElementById('scoreboard');
     const timerDisplay = document.getElementById('timer');
+    const correctSound = document.getElementById('correct-sound');
+    const wrongSound = document.getElementById('wrong-sound');
+    const endSound = document.getElementById('end-sound');
 
     async function isValidWord(word) {
       const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
@@ -88,7 +108,7 @@
       timeLeft = 120;
       usedWords.clear();
       updateScoreboard();
-      currentWordDisplay.textContent = currentWord;
+      currentWordDisplay.textContent = currentWord.toUpperCase();
       input.value = '';
       startTimer();
     }
@@ -100,6 +120,7 @@
         timerDisplay.textContent = `Time left: ${timeLeft}s`;
         if (timeLeft <= 0) {
           clearInterval(timerInterval);
+          endSound.play();
           alert(`Time's up! Your score: ${score}`);
         }
       }, 1000);
@@ -115,13 +136,15 @@
         await isValidWord(nextWord)
       ) {
         currentWord = nextWord;
-        currentWordDisplay.textContent = currentWord;
+        currentWordDisplay.textContent = currentWord.toUpperCase();
         usedWords.add(nextWord);
         score++;
         updateScoreboard();
         input.value = '';
+        correctSound.play();
       } else {
-        alert('Invalid word! Must be real, same length, one letter different.');
+        wrongSound.play();
+        alert('Invalid word! Must be real, same length, and one letter different.');
       }
     });
 
