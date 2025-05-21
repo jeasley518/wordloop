@@ -1,108 +1,137 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>WordLoop</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>WordLoop Game</title>
   <style>
-    body { font-family: Arial, sans-serif; background: #f0f8ff; text-align: center; padding: 30px; }
-    h1 { color: #333; font-size: 2em; }
-    input, button { font-size: 1.2em; padding: 10px; margin: 10px; width: 80%; max-width: 300px; }
-    #stats { margin-top: 20px; font-size: 1em; }
-    .score { font-weight: bold; }
-    @media (max-width: 600px) {
-      h1 { font-size: 1.5em; }
-      input, button { font-size: 1em; }
+    body {
+      font-family: 'Arial', sans-serif;
+      text-align: center;
+      padding: 20px;
+      background-color: #f0f8ff;
+    }
+    #current-word {
+      font-size: 48px;
+      font-weight: bold;
+      margin: 30px 0;
+    }
+    input[type="text"] {
+      font-size: 24px;
+      padding: 10px;
+      width: 60%;
+      max-width: 300px;
+      margin-bottom: 20px;
+    }
+    button {
+      font-size: 20px;
+      padding: 15px 30px;
+      margin: 10px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    #submit-btn {
+      background-color: #28a745;
+      color: white;
+    }
+    #new-word-btn {
+      background-color: #007bff;
+      color: white;
+    }
+    #scoreboard {
+      font-size: 20px;
+      margin-top: 10px;
+    }
+    #timer {
+      font-size: 24px;
+      margin-bottom: 20px;
+      color: #333;
     }
   </style>
 </head>
 <body>
   <h1>WordLoop</h1>
-  <p>Change one letter to make a new valid word.</p>
-  <div>
-    <p>Current Word: <span id="currentWord">GAME</span></p>
-    <input id="wordInput" maxlength="4" />
-    <button id="submitBtn">Submit</button>
-  </div>
-  <div id="stats">
-    <p>Score: <span id="score">0</span></p>
-    <p>Streak: <span id="streak">0</span></p>
-    <p>Best Streak: <span id="bestStreak">0</span></p>
-    <p>Time Left: <span id="timer">120</span>s</p>
-    <p id="message"></p>
-  </div>
+  <div id="current-word">loop</div>
+  <div id="timer">Time left: 120s</div>
+  <input type="text" id="word-input" placeholder="Enter next word" />
+  <br>
+  <button id="submit-btn">Submit</button>
+  <button id="new-word-btn">New Word</button>
+  <div id="scoreboard">Score: 0</div>
 
   <script>
-    let currentWord = "GAME";
+    let currentWord = 'loop';
     let score = 0;
-    let streak = 0;
-    let bestStreak = 0;
     let timeLeft = 120;
+    let timerInterval;
+    const usedWords = new Set();
 
-    const currentWordEl = document.getElementById("currentWord");
-    const wordInput = document.getElementById("wordInput");
-    const scoreEl = document.getElementById("score");
-    const streakEl = document.getElementById("streak");
-    const bestStreakEl = document.getElementById("bestStreak");
-    const timerEl = document.getElementById("timer");
-    const messageEl = document.getElementById("message");
+    const currentWordDisplay = document.getElementById('current-word');
+    const input = document.getElementById('word-input');
+    const scoreboard = document.getElementById('scoreboard');
+    const timerDisplay = document.getElementById('timer');
 
     async function isValidWord(word) {
-      try {
-        const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
-        return res.ok;
-      } catch {
-        return false;
-      }
+      const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
+      return res.ok;
     }
 
-    document.getElementById("submitBtn").onclick = async () => {
-      const newWord = wordInput.value.toUpperCase();
-      wordInput.value = "";
-      if (newWord.length !== 4) {
-        messageEl.textContent = "Word must be 4 letters.";
-        streak = 0;
-        updateStats();
-        return;
-      }
-      const isValid = await isValidWord(newWord);
-      if (!isValid) {
-        messageEl.textContent = "Invalid word.";
-        streak = 0;
-      } else if (diffLetters(currentWord, newWord) !== 1) {
-        messageEl.textContent = "Only change one letter!";
-        streak = 0;
-      } else {
-        messageEl.textContent = "Great!";
-        currentWord = newWord;
-        currentWordEl.textContent = currentWord;
-        score++;
-        streak++;
-        if (streak > bestStreak) bestStreak = streak;
-      }
-      updateStats();
-    };
-
-    function updateStats() {
-      scoreEl.textContent = score;
-      streakEl.textContent = streak;
-      bestStreakEl.textContent = bestStreak;
+    function updateScoreboard() {
+      scoreboard.textContent = `Score: ${score}`;
     }
 
-    function diffLetters(a, b) {
-      return a.split('').filter((c, i) => c !== b[i]).length;
+    function resetGame(newWord = 'loop') {
+      clearInterval(timerInterval);
+      currentWord = newWord;
+      score = 0;
+      timeLeft = 120;
+      usedWords.clear();
+      updateScoreboard();
+      currentWordDisplay.textContent = currentWord;
+      input.value = '';
+      startTimer();
     }
 
-    setInterval(() => {
-      if (timeLeft > 0) {
+    function startTimer() {
+      timerDisplay.textContent = `Time left: ${timeLeft}s`;
+      timerInterval = setInterval(() => {
         timeLeft--;
-        timerEl.textContent = timeLeft;
+        timerDisplay.textContent = `Time left: ${timeLeft}s`;
+        if (timeLeft <= 0) {
+          clearInterval(timerInterval);
+          alert(`Time's up! Your score: ${score}`);
+        }
+      }, 1000);
+    }
+
+    document.getElementById('submit-btn').addEventListener('click', async () => {
+      const nextWord = input.value.toLowerCase();
+      if (
+        nextWord.length === currentWord.length &&
+        nextWord !== currentWord &&
+        [...nextWord].filter((ch, i) => ch !== currentWord[i]).length === 1 &&
+        !(usedWords.has(nextWord)) &&
+        await isValidWord(nextWord)
+      ) {
+        currentWord = nextWord;
+        currentWordDisplay.textContent = currentWord;
+        usedWords.add(nextWord);
+        score++;
+        updateScoreboard();
+        input.value = '';
       } else {
-        messageEl.textContent = "Time's up!";
-        document.getElementById("submitBtn").disabled = true;
+        alert('Invalid word! Must be real, same length, one letter different.');
       }
-    }, 1000);
+    });
+
+    document.getElementById('new-word-btn').addEventListener('click', () => {
+      const randomStartWords = ['loop', 'game', 'word', 'test', 'code'];
+      const randomWord = randomStartWords[Math.floor(Math.random() * randomStartWords.length)];
+      resetGame(randomWord);
+    });
+
+    resetGame(currentWord);
   </script>
 </body>
 </html>
