@@ -1,0 +1,108 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WordLoop</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f0f8ff; text-align: center; padding: 30px; }
+    h1 { color: #333; font-size: 2em; }
+    input, button { font-size: 1.2em; padding: 10px; margin: 10px; width: 80%; max-width: 300px; }
+    #stats { margin-top: 20px; font-size: 1em; }
+    .score { font-weight: bold; }
+    @media (max-width: 600px) {
+      h1 { font-size: 1.5em; }
+      input, button { font-size: 1em; }
+    }
+  </style>
+</head>
+<body>
+  <h1>WordLoop</h1>
+  <p>Change one letter to make a new valid word.</p>
+  <div>
+    <p>Current Word: <span id="currentWord">GAME</span></p>
+    <input id="wordInput" maxlength="4" />
+    <button id="submitBtn">Submit</button>
+  </div>
+  <div id="stats">
+    <p>Score: <span id="score">0</span></p>
+    <p>Streak: <span id="streak">0</span></p>
+    <p>Best Streak: <span id="bestStreak">0</span></p>
+    <p>Time Left: <span id="timer">120</span>s</p>
+    <p id="message"></p>
+  </div>
+
+  <script>
+    let currentWord = "GAME";
+    let score = 0;
+    let streak = 0;
+    let bestStreak = 0;
+    let timeLeft = 120;
+
+    const currentWordEl = document.getElementById("currentWord");
+    const wordInput = document.getElementById("wordInput");
+    const scoreEl = document.getElementById("score");
+    const streakEl = document.getElementById("streak");
+    const bestStreakEl = document.getElementById("bestStreak");
+    const timerEl = document.getElementById("timer");
+    const messageEl = document.getElementById("message");
+
+    async function isValidWord(word) {
+      try {
+        const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
+        return res.ok;
+      } catch {
+        return false;
+      }
+    }
+
+    document.getElementById("submitBtn").onclick = async () => {
+      const newWord = wordInput.value.toUpperCase();
+      wordInput.value = "";
+      if (newWord.length !== 4) {
+        messageEl.textContent = "Word must be 4 letters.";
+        streak = 0;
+        updateStats();
+        return;
+      }
+      const isValid = await isValidWord(newWord);
+      if (!isValid) {
+        messageEl.textContent = "Invalid word.";
+        streak = 0;
+      } else if (diffLetters(currentWord, newWord) !== 1) {
+        messageEl.textContent = "Only change one letter!";
+        streak = 0;
+      } else {
+        messageEl.textContent = "Great!";
+        currentWord = newWord;
+        currentWordEl.textContent = currentWord;
+        score++;
+        streak++;
+        if (streak > bestStreak) bestStreak = streak;
+      }
+      updateStats();
+    };
+
+    function updateStats() {
+      scoreEl.textContent = score;
+      streakEl.textContent = streak;
+      bestStreakEl.textContent = bestStreak;
+    }
+
+    function diffLetters(a, b) {
+      return a.split('').filter((c, i) => c !== b[i]).length;
+    }
+
+    setInterval(() => {
+      if (timeLeft > 0) {
+        timeLeft--;
+        timerEl.textContent = timeLeft;
+      } else {
+        messageEl.textContent = "Time's up!";
+        document.getElementById("submitBtn").disabled = true;
+      }
+    }, 1000);
+  </script>
+</body>
+</html>
