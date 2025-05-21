@@ -24,6 +24,23 @@
       font-weight: bold;
       margin: 30px 0;
       text-transform: uppercase;
+      transition: transform 0.3s;
+    }
+    .pop {
+      animation: pop 0.3s ease;
+    }
+    .shake {
+      animation: shake 0.4s ease;
+    }
+    @keyframes pop {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.3); }
+      100% { transform: scale(1); }
+    }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-10px); }
+      75% { transform: translateX(10px); }
     }
     input[type="text"] {
       font-size: 24px;
@@ -47,12 +64,16 @@
     #new-word-btn {
       background-color: #007bff;
       color: white;
-      font-size: 14px;
-      padding: 8px 15px;
+      font-size: 12px;
+      padding: 6px 12px;
     }
-    #scoreboard {
+    #scoreboard, #streak-badge {
       font-size: 20px;
       margin-top: 10px;
+    }
+    #streak-badge {
+      color: gold;
+      font-weight: bold;
     }
     #timer {
       font-size: 24px;
@@ -72,6 +93,7 @@
   <br>
   <button id="new-word-btn">New Word</button>
   <div id="scoreboard">Score: 0</div>
+  <div id="streak-badge"></div>
 
   <audio id="correct-sound" src="https://www.soundjay.com/buttons/sounds/button-4.mp3"></audio>
   <audio id="wrong-sound" src="https://www.soundjay.com/buttons/sounds/button-10.mp3"></audio>
@@ -82,12 +104,14 @@
     let score = 0;
     let timeLeft = 120;
     let timerInterval;
+    let streak = 0;
     const usedWords = new Set();
 
     const currentWordDisplay = document.getElementById('current-word');
     const input = document.getElementById('word-input');
     const scoreboard = document.getElementById('scoreboard');
     const timerDisplay = document.getElementById('timer');
+    const streakBadge = document.getElementById('streak-badge');
     const correctSound = document.getElementById('correct-sound');
     const wrongSound = document.getElementById('wrong-sound');
     const endSound = document.getElementById('end-sound');
@@ -99,12 +123,14 @@
 
     function updateScoreboard() {
       scoreboard.textContent = `Score: ${score}`;
+      streakBadge.textContent = streak >= 3 ? `🔥 3-Word Streak! 🔥` : '';
     }
 
     function resetGame(newWord = 'loop') {
       clearInterval(timerInterval);
       currentWord = newWord;
       score = 0;
+      streak = 0;
       timeLeft = 120;
       usedWords.clear();
       updateScoreboard();
@@ -137,19 +163,29 @@
       ) {
         currentWord = nextWord;
         currentWordDisplay.textContent = currentWord.toUpperCase();
+        currentWordDisplay.classList.add('pop');
+        setTimeout(() => currentWordDisplay.classList.remove('pop'), 300);
         usedWords.add(nextWord);
         score++;
+        streak++;
+        correctSound.play();
         updateScoreboard();
         input.value = '';
-        correctSound.play();
       } else {
+        streak = 0;
+        currentWordDisplay.classList.add('shake');
+        setTimeout(() => currentWordDisplay.classList.remove('shake'), 400);
         wrongSound.play();
         alert('Invalid word! Must be real, same length, and one letter different.');
       }
     });
 
     document.getElementById('new-word-btn').addEventListener('click', () => {
-      const randomStartWords = ['loop', 'game', 'word', 'test', 'code'];
+      const randomStartWords = [
+        'loop', 'game', 'word', 'test', 'code',
+        'fast', 'hope', 'love', 'fish', 'bake',
+        'rain', 'road', 'boat', 'tree', 'fire'
+      ];
       const randomWord = randomStartWords[Math.floor(Math.random() * randomStartWords.length)];
       resetGame(randomWord);
     });
