@@ -22,9 +22,10 @@
     }
 
     #current-word {
-      font-size: 2.2em;
+      font-size: 2.4em;
       font-weight: bold;
       margin-bottom: 5px;
+      text-transform: uppercase;
     }
 
     #possible-guesses {
@@ -40,20 +41,25 @@
     }
 
     button {
+      display: block;
+      margin: 20px auto 10px auto;
       padding: 10px 20px;
       font-size: 1em;
-      margin-left: 10px;
     }
 
     #message {
-      margin-top: 10px;
       font-weight: bold;
       color: red;
     }
 
     #timer {
-      margin-top: 15px;
+      margin-top: 10px;
       font-size: 1.1em;
+    }
+
+    #level {
+      font-size: 1em;
+      color: #333;
     }
 
     #history {
@@ -65,7 +71,17 @@
       cursor: pointer;
       text-decoration: underline;
       display: inline-block;
-      margin: 2px 6px;
+      margin: 4px 8px;
+      font-weight: bold;
+    }
+
+    .definition {
+      font-style: italic;
+      color: #444;
+      margin: 4px 0 10px 0;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
     }
 
     #summary {
@@ -83,6 +99,7 @@
     <button onclick="submitWord()">Submit</button>
     <div id="message"></div>
     <div id="timer">Time: 90s</div>
+    <div id="level">Level: 1</div>
     <div id="history"><strong>Words Used:</strong><br /></div>
     <div id="summary"></div>
   </div>
@@ -93,7 +110,7 @@
     let time = 90;
     let timerInterval;
     let points = 0;
-    const wordLength = 4;
+    let level = 1;
 
     const fourLetterWords = [
       "bold", "cold", "dark", "dawn", "fame", "game", "gaze", "gold", "home", "jump",
@@ -111,7 +128,21 @@
       }
     }
 
+    async function getDefinition(word) {
+      try {
+        const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
+        const data = await res.json();
+        const meanings = data[0]?.meanings;
+        return meanings?.[0]?.definitions?.[0]?.definition || "No definition found.";
+      } catch {
+        return "No definition available.";
+      }
+    }
+
     function startTimer() {
+      clearInterval(timerInterval);
+      time = 90;
+      document.getElementById("timer").textContent = `Time: ${time}s`;
       timerInterval = setInterval(() => {
         time--;
         document.getElementById("timer").textContent = `Time: ${time}s`;
@@ -157,7 +188,15 @@
       correctWords.push(newWord);
       points++;
 
-      document.getElementById("current-word").textContent = currentWord;
+      // Level up every 10 correct answers
+      if (points % 10 === 0) {
+        level++;
+        document.body.style.backgroundColor = level % 2 === 0 ? "#f4f4f4" : "#ffffff";
+        startTimer();
+      }
+
+      document.getElementById("current-word").textContent = currentWord.toUpperCase();
+      document.getElementById("level").textContent = `Level: ${level}`;
       updateHistory();
       showMessage("");
       updatePossibleGuesses();
@@ -169,8 +208,20 @@
       correctWords.forEach(word => {
         const span = document.createElement("span");
         span.className = "word-item";
-        span.textContent = word;
-        span.onclick = () => window.open(`https://www.dictionary.com/browse/${word}`, "_blank");
+        span.textContent = word.toUpperCase();
+        span.onclick = async () => {
+          const existing = document.getElementById(`def-${word}`);
+          if (existing) {
+            existing.remove();
+            return;
+          }
+          const def = await getDefinition(word);
+          const defDiv = document.createElement("div");
+          defDiv.className = "definition";
+          defDiv.id = `def-${word}`;
+          defDiv.textContent = `"${word}": ${def}`;
+          span.insertAdjacentElement("afterend", defDiv);
+        };
         historyDiv.appendChild(span);
       });
     }
@@ -185,7 +236,7 @@
         <h3>Game Over!</h3>
         <p>Total Points: ${points}</p>
         <p>Total Time: 90 seconds</p>
-        <p>Words Used: ${correctWords.join(", ")}</p>
+        <p>Words Used: ${correctWords.join(", ").toUpperCase()}</p>
       `;
     }
 
@@ -224,12 +275,13 @@
       currentWord = word;
       correctWords = [currentWord];
       points = 0;
-      time = 90;
-      document.getElementById("current-word").textContent = currentWord;
+      level = 1;
+      document.getElementById("current-word").textContent = currentWord.toUpperCase();
       document.getElementById("summary").innerHTML = "";
       document.getElementById("message").textContent = "";
+      document.getElementById("level").textContent = `Level: ${level}`;
       document.getElementById("new-word").focus();
-      document.getElementById("timer").textContent = `Time: ${time}s`;
+      document.getElementById("timer").textContent = `Time: 90s`;
       updateHistory();
       updatePossibleGuesses();
       startTimer();
