@@ -32,6 +32,12 @@
       text-transform: uppercase;
     }
 
+    #combo-count {
+      font-size: 18px;
+      margin-bottom: 20px;
+      color: #333;
+    }
+
     input[type="text"] {
       font-size: 22px;
       padding: 12px;
@@ -101,6 +107,7 @@
   <div id="instructions">Change one letter at a time to create real words.</div>
 
   <div id="current-word">LOOP</div>
+  <div id="combo-count">Checking valid combinations...</div>
 
   <input type="text" id="word-input" placeholder="Enter next word">
   <br>
@@ -120,6 +127,7 @@
     let score = 0;
     const usedWords = new Set();
     const wordHistory = [];
+    const alphabet = 'abcdefghijklmnopqrstuvwxyz';
 
     const currentWordDisplay = document.getElementById('current-word');
     const input = document.getElementById('word-input');
@@ -127,6 +135,7 @@
     const startWordDisplay = document.getElementById('start-word');
     const wordHistoryDisplay = document.getElementById('word-history');
     const definitionDisplay = document.getElementById('definition');
+    const comboDisplay = document.getElementById('combo-count');
 
     function updateDisplays() {
       scoreboard.textContent = `Score: ${score}`;
@@ -152,6 +161,21 @@
       }
     }
 
+    async function countValidCombinations(word) {
+      let count = 0;
+      for (let i = 0; i < word.length; i++) {
+        for (let c of alphabet) {
+          if (c !== word[i]) {
+            const testWord = word.slice(0, i) + c + word.slice(i + 1);
+            if (await isValidWord(testWord)) {
+              count++;
+            }
+          }
+        }
+      }
+      comboDisplay.textContent = `Valid 1-letter word combinations: ${count}`;
+    }
+
     async function lookupDefinition(word) {
       try {
         const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
@@ -167,7 +191,7 @@
       }
     }
 
-    function resetGame(newWord = 'loop') {
+    async function resetGame(newWord = 'loop') {
       currentWord = newWord;
       startWord = newWord;
       score = 0;
@@ -178,6 +202,8 @@
       updateDisplays();
       updateHistory();
       definitionDisplay.textContent = '';
+      comboDisplay.textContent = 'Checking valid combinations...';
+      await countValidCombinations(currentWord);
     }
 
     document.getElementById('submit-btn').addEventListener('click', async () => {
@@ -198,13 +224,24 @@
         updateDisplays();
         input.value = '';
         definitionDisplay.textContent = '';
+        comboDisplay.textContent = 'Checking valid combinations...';
+        await countValidCombinations(currentWord);
       } else {
         alert('Invalid word! Must be real, same length, and one letter different.');
       }
     });
 
     document.getElementById('new-word-btn').addEventListener('click', () => {
-      const startWords = ['loop','game','word','test','code','fast','hope','love','fish','bake','rain'];
+      const startWords = [
+        'loop','game','word','test','code','fast','hope','love','fish','bake','rain',
+        'road','boat','tree','fire','sand','time','dive','lift','mood','clap','bump',
+        'ring','mine','hike','jump','push','pull','fizz','buzz','lamp','frog','grip',
+        'mask','bone','vote','zoom','race','lace','ride','send','bond','lend','luck',
+        'back','make','pick','hide','fork','bore','chat','grin','plan','cast','flow',
+        'seat','trip','wrap','snap','wage','zone','mile','deal','seal','pack','camp',
+        'park','claw','flap','brag','stop','grab','yell','roar','maze','quiz','wipe',
+        'melt','scan','scar','blur','mint','kick','whip','bank','perk','jazz'
+      ];
       const randomWord = startWords[Math.floor(Math.random() * startWords.length)];
       resetGame(randomWord);
     });
