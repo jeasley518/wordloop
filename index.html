@@ -1,256 +1,106 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>WordLoop</title>
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background-color: #fffaf2;
-      text-align: center;
-      padding: 30px 16px;
-      color: #1a1a1a;
+<script>
+  let currentWord = 'loop';
+  let startWord = 'loop';
+  let score = 0;
+  const usedWords = new Set();
+  const wordHistory = [];
+
+  const currentWordDisplay = document.getElementById('current-word');
+  const input = document.getElementById('word-input');
+  const scoreboard = document.getElementById('scoreboard');
+  const startWordDisplay = document.getElementById('start-word');
+  const wordHistoryDisplay = document.getElementById('word-history');
+  const definitionDisplay = document.getElementById('definition');
+
+  function updateDisplays() {
+    scoreboard.textContent = `Score: ${score}`;
+    startWordDisplay.textContent = `Start word: ${startWord.toUpperCase()}`;
+  }
+
+  function updateHistory() {
+    wordHistoryDisplay.innerHTML = '';
+    wordHistory.forEach(word => {
+      const span = document.createElement('span');
+      span.textContent = word.toUpperCase();
+      span.onclick = () => lookupDefinition(word);
+      wordHistoryDisplay.appendChild(span);
+    });
+  }
+
+  async function isValidWord(word) {
+    try {
+      const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
+      return res.ok;
+    } catch {
+      return false;
     }
+  }
 
-    h1 {
-      font-size: 36px;
-      font-weight: 700;
-      margin-bottom: 10px;
-    }
-
-    #instructions {
-      font-size: 16px;
-      margin-bottom: 32px;
-      color: #555;
-    }
-
-    #current-word {
-      font-size: 56px;
-      font-weight: 700;
-      margin: 20px 0;
-      text-transform: uppercase;
-    }
-
-    #timer {
-      font-size: 20px;
-      margin-bottom: 24px;
-    }
-
-    input[type="text"] {
-      font-size: 22px;
-      padding: 12px;
-      width: 80%;
-      max-width: 320px;
-      margin-bottom: 20px;
-      border: 1.5px solid #ccc;
-      border-radius: 8px;
-      text-align: center;
-    }
-
-    button {
-      border: none;
-      cursor: pointer;
-      border-radius: 8px;
-    }
-
-    #submit-btn {
-      background-color: #28a745;
-      color: white;
-      font-size: 20px;
-      padding: 14px 36px;
-      margin: 10px 0;
-    }
-
-    #new-word-btn {
-      background-color: #eee;
-      color: #333;
-      font-size: 13px;
-      padding: 6px 16px;
-      margin: 5px;
-      border-radius: 20px;
-    }
-
-    #scoreboard, #level-display, #start-word {
-      font-size: 18px;
-      margin-top: 10px;
-    }
-
-    #history {
-      margin-top: 30px;
-      font-size: 16px;
-    }
-
-    #history span {
-      display: inline-block;
-      margin: 4px 6px;
-      padding: 6px 10px;
-      background: #f1f1f1;
-      border-radius: 8px;
-      cursor: pointer;
-    }
-
-    #definition {
-      margin-top: 10px;
-      font-size: 14px;
-      color: #444;
-      max-width: 400px;
-      margin-left: auto;
-      margin-right: auto;
-    }
-  </style>
-</head>
-<body>
-
-  <h1>WordLoop</h1>
-  <div id="instructions">Change one letter at a time to create real words.</div>
-
-  <div id="current-word">LOOP</div>
-  <div id="timer">Time left: 120s</div>
-
-  <input type="text" id="word-input" placeholder="Enter next word">
-  <br>
-  <button id="submit-btn">Submit</button>
-  <br>
-  <button id="new-word-btn">New Word</button>
-
-  <div id="scoreboard">Score: 0</div>
-  <div id="level-display">Level: 1 | XP: 0 / 100</div>
-  <div id="start-word">Start word: LOOP</div>
-
-  <div id="history"><strong>Word History:</strong> <br><div id="word-history"></div></div>
-  <div id="definition"></div>
-
-  <script>
-    let currentWord = 'loop';
-    let startWord = 'loop';
-    let score = 0;
-    let xp = 0;
-    let level = 1;
-    let timeLeft = 120;
-    let timerInterval;
-    const usedWords = new Set();
-    const wordHistory = [];
-
-    const currentWordDisplay = document.getElementById('current-word');
-    const input = document.getElementById('word-input');
-    const scoreboard = document.getElementById('scoreboard');
-    const timerDisplay = document.getElementById('timer');
-    const levelDisplay = document.getElementById('level-display');
-    const startWordDisplay = document.getElementById('start-word');
-    const wordHistoryDisplay = document.getElementById('word-history');
-    const definitionDisplay = document.getElementById('definition');
-
-    function updateDisplays() {
-      scoreboard.textContent = `Score: ${score}`;
-      levelDisplay.textContent = `Level: ${level} | XP: ${xp % 100} / 100`;
-      startWordDisplay.textContent = `Start word: ${startWord.toUpperCase()}`;
-    }
-
-    function updateHistory() {
-      wordHistoryDisplay.innerHTML = '';
-      wordHistory.forEach(word => {
-        const span = document.createElement('span');
-        span.textContent = word.toUpperCase();
-        span.onclick = () => lookupDefinition(word);
-        wordHistoryDisplay.appendChild(span);
-      });
-    }
-
-    async function isValidWord(word) {
-      try {
-        const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
-        return res.ok;
-      } catch {
-        return false;
-      }
-    }
-
-    async function lookupDefinition(word) {
-      try {
-        const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
-        if (res.ok) {
-          const data = await res.json();
-          const meaning = data[0].meanings[0].definitions[0].definition;
-          definitionDisplay.textContent = `${word.toUpperCase()}: ${meaning}`;
-        } else {
-          definitionDisplay.textContent = `No definition found for ${word.toUpperCase()}.`;
-        }
-      } catch {
-        definitionDisplay.textContent = `Could not load definition.`;
-      }
-    }
-
-    function resetTimer() {
-      clearInterval(timerInterval);
-      timeLeft = 120;
-      startTimer();
-    }
-
-    function startTimer() {
-      timerDisplay.textContent = `Time left: ${timeLeft}s`;
-      timerInterval = setInterval(() => {
-        timeLeft--;
-        timerDisplay.textContent = `Time left: ${timeLeft}s`;
-        if (timeLeft <= 0) {
-          clearInterval(timerInterval);
-          alert(`Time's up! Your score: ${score}`);
-        }
-      }, 1000);
-    }
-
-    function resetGame(newWord = 'loop') {
-      clearInterval(timerInterval);
-      currentWord = newWord;
-      startWord = newWord;
-      score = 0;
-      xp = 0;
-      level = 1;
-      timeLeft = 120;
-      usedWords.clear();
-      wordHistory.length = 0;
-      currentWordDisplay.textContent = currentWord.toUpperCase();
-      input.value = '';
-      updateDisplays();
-      updateHistory();
-      startTimer();
-    }
-
-    document.getElementById('submit-btn').addEventListener('click', async () => {
-      const nextWord = input.value.toLowerCase();
-      if (
-        nextWord.length === currentWord.length &&
-        nextWord !== currentWord &&
-        [...nextWord].filter((ch, i) => ch !== currentWord[i]).length === 1 &&
-        !usedWords.has(nextWord) &&
-        await isValidWord(nextWord)
-      ) {
-        currentWord = nextWord;
-        currentWordDisplay.textContent = currentWord.toUpperCase();
-        usedWords.add(nextWord);
-        wordHistory.push(nextWord);
-        updateHistory();
-        score++;
-        xp += 10;
-        if (xp >= level * 100) {
-          level++;
-          resetTimer();
-        }
-        updateDisplays();
-        input.value = '';
-        definitionDisplay.textContent = '';
+  async function lookupDefinition(word) {
+    try {
+      const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
+      if (res.ok) {
+        const data = await res.json();
+        const meaning = data[0].meanings[0].definitions[0].definition;
+        definitionDisplay.textContent = `${word.toUpperCase()}: ${meaning}`;
       } else {
-        alert('Invalid word! Must be real, same length, and one letter different.');
+        definitionDisplay.textContent = `No definition found for ${word.toUpperCase()}.`;
       }
-    });
+    } catch {
+      definitionDisplay.textContent = `Could not load definition.`;
+    }
+  }
 
-    document.getElementById('new-word-btn').addEventListener('click', () => {
-      const startWords = ['loop','game','word','test','code','fast','hope','love','fish','bake','rain'];
-      const randomWord = startWords[Math.floor(Math.random() * startWords.length)];
-      resetGame(randomWord);
-    });
+  function resetGame(newWord = 'loop') {
+    currentWord = newWord;
+    startWord = newWord;
+    score = 0;
+    usedWords.clear();
+    wordHistory.length = 0;
+    currentWordDisplay.textContent = currentWord.toUpperCase();
+    input.value = '';
+    updateDisplays();
+    updateHistory();
+    definitionDisplay.textContent = '';
+  }
 
-    resetGame(currentWord);
-  </script>
-</body>
-</html>
+  document.getElementById('submit-btn').addEventListener('click', async () => {
+    const nextWord = input.value.toLowerCase();
+    if (
+      nextWord.length === currentWord.length &&
+      nextWord !== currentWord &&
+      [...nextWord].filter((ch, i) => ch !== currentWord[i]).length === 1 &&
+      !usedWords.has(nextWord) &&
+      await isValidWord(nextWord)
+    ) {
+      currentWord = nextWord;
+      currentWordDisplay.textContent = currentWord.toUpperCase();
+      usedWords.add(nextWord);
+      wordHistory.push(nextWord);
+      updateHistory();
+      score++;
+      updateDisplays();
+      input.value = '';
+      definitionDisplay.textContent = '';
+    } else {
+      alert('Invalid word! Must be real, same length, and one letter different.');
+    }
+  });
+
+  document.getElementById('new-word-btn').addEventListener('click', () => {
+    const startWords = [
+      'loop','game','word','test','code','fast','hope','love','fish','bake','rain',
+      'road','boat','tree','fire','sand','time','dive','lift','mood','clap','bump',
+      'ring','mine','hike','jump','push','pull','fizz','buzz','lamp','frog','grip',
+      'mask','bone','vote','zoom','race','lace','ride','send','bond','lend','luck',
+      'back','make','pick','hide','fork','bore','chat','grin','plan','cast','flow',
+      'seat','trip','wrap','snap','wage','zone','mile','deal','seal','pack','camp',
+      'park','claw','flap','brag','stop','grab','yell','roar','maze','quiz','wipe',
+      'melt','scan','scar','blur','mint','kick','whip','bank','perk','jazz'
+    ];
+    const randomWord = startWords[Math.floor(Math.random() * startWords.length)];
+    resetGame(randomWord);
+  });
+
+  resetGame(currentWord);
+</script>
