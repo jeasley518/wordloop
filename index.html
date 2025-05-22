@@ -14,7 +14,6 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
       text-align: center;
       min-height: 100vh;
     }
@@ -23,7 +22,7 @@
       font-size: 2em;
       font-weight: 600;
       font-style: italic;
-      margin-bottom: 0.25em;
+      margin-top: 1.5em;
     }
 
     p {
@@ -83,6 +82,31 @@
       font-size: 0.85em;
       color: #666;
     }
+
+    #history {
+      margin-top: 2em;
+      width: 90%;
+      max-width: 500px;
+      text-align: left;
+    }
+
+    #history h3 {
+      margin-bottom: 0.5em;
+      font-size: 1.1em;
+    }
+
+    .history-word {
+      margin: 0.25em 0;
+      cursor: pointer;
+      color: #007aff;
+      text-decoration: underline;
+    }
+
+    .definition {
+      font-size: 0.9em;
+      color: #444;
+      margin-left: 1em;
+    }
   </style>
 </head>
 <body>
@@ -90,7 +114,7 @@
   <p>Change one letter at time to create real words.</p>
 
   <div id="current-word">LOOP</div>
-  <div id="status">Level 1 · <span id="timer">120s left</span> · <span id="combo-count">0 combos</span></div>
+  <div id="status">Level <span id="level">1</span> · <span id="timer">90s left</span> · <span id="combo-count">0 combos</span></div>
 
   <input type="text" id="next-word" placeholder="Type a new word..." />
   <br />
@@ -102,21 +126,29 @@
     Score: <span id="score">0</span> | Start word: <span id="start-word">LOOP</span>
   </div>
 
+  <div id="history">
+    <h3>Words used:</h3>
+    <div id="word-list"></div>
+  </div>
+
   <script>
     let currentWord = "LOOP";
     let score = 0;
     let combos = 0;
     let level = 1;
-    let timerSeconds = 120;
+    let timerSeconds = 90;
     let timer;
+    let correctWordsThisRound = 0;
+    const usedWords = [];
 
     function startTimer() {
+      clearInterval(timer);
       timer = setInterval(() => {
         timerSeconds--;
         document.getElementById("timer").textContent = `${timerSeconds}s left`;
         if (timerSeconds <= 0) {
           clearInterval(timer);
-          alert(`Time's up!\nScore: ${score}\nWords used: ${combos}`);
+          alert(`Time's up!\nFinal Score: ${score}\nLevel: ${level}`);
           resetGame();
         }
       }, 1000);
@@ -128,14 +160,27 @@
         alert("Word must be the same length and differ by exactly one letter.");
         return;
       }
-      // You could integrate a real dictionary API check here
+
       score++;
       combos++;
+      correctWordsThisRound++;
+
       currentWord = newWord;
+      usedWords.push(newWord);
+      updateHistory();
+
       document.getElementById("current-word").textContent = currentWord;
       document.getElementById("next-word").value = "";
       document.getElementById("score").textContent = score;
       document.getElementById("combo-count").textContent = `${combos} combos`;
+
+      if (correctWordsThisRound >= 10) {
+        level++;
+        correctWordsThisRound = 0;
+        timerSeconds = 90;
+        document.getElementById("level").textContent = level;
+        document.getElementById("timer").textContent = `${timerSeconds}s left`;
+      }
     }
 
     function isOneLetterDifferent(word1, word2) {
@@ -147,34 +192,47 @@
     }
 
     function generateNewWord() {
-      // Placeholder: this would ideally randomize from a curated list
-      const newStart = "LOOP";
-      currentWord = newStart;
-      score = 0;
-      combos = 0;
-      timerSeconds = 120;
-      clearInterval(timer);
-      startTimer();
-      document.getElementById("current-word").textContent = newStart;
-      document.getElementById("score").textContent = "0";
-      document.getElementById("combo-count").textContent = "0 combos";
-      document.getElementById("start-word").textContent = newStart;
-      document.getElementById("next-word").value = "";
-      document.getElementById("timer").textContent = "120s left";
-    }
-
-    function resetGame() {
       currentWord = "LOOP";
       score = 0;
       combos = 0;
-      timerSeconds = 120;
+      level = 1;
+      correctWordsThisRound = 0;
+      timerSeconds = 90;
+      usedWords.length = 0;
       document.getElementById("current-word").textContent = currentWord;
       document.getElementById("score").textContent = "0";
       document.getElementById("combo-count").textContent = "0 combos";
       document.getElementById("start-word").textContent = currentWord;
+      document.getElementById("level").textContent = "1";
+      document.getElementById("timer").textContent = "90s left";
+      document.getElementById("word-list").innerHTML = "";
       document.getElementById("next-word").value = "";
-      document.getElementById("timer").textContent = "120s left";
       startTimer();
+    }
+
+    function updateHistory() {
+      const container = document.getElementById("word-list");
+      const word = usedWords[usedWords.length - 1];
+      const entry = document.createElement("div");
+      entry.className = "history-word";
+      entry.textContent = word;
+      entry.onclick = () => fetchDefinition(word, entry);
+      container.appendChild(entry);
+    }
+
+    async function fetchDefinition(word, element) {
+      try {
+        const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
+        const data = await res.json();
+        const def = data[0]?.meanings?.[0]?.definitions?.[0]?.definition || "No definition found.";
+        const defEl = document.createElement("div");
+        defEl.className = "definition";
+        defEl.textContent = def;
+        element.parentNode.insertBefore(defEl, element.nextSibling);
+        element.onclick = null;
+      } catch (error) {
+        alert("Error fetching definition.");
+      }
     }
 
     window.onload = () => {
