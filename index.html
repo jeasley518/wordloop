@@ -90,6 +90,13 @@
       margin-top: 40px;
       font-size: 1em;
     }
+
+    #play-again-btn {
+      display: none;
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 1em;
+    }
   </style>
 </head>
 <body>
@@ -108,6 +115,7 @@
     <div id="history"><strong>Words Used:</strong><br /></div>
     <div id="summary"></div>
     <div id="stats-output"></div>
+    <button id="play-again-btn" onclick="startGame()">Play Another Round</button>
   </div>
 
   <script>
@@ -126,10 +134,11 @@
       "bold", "cold", "dark", "dawn", "fame", "game", "gaze", "gold", "home", "jump",
       "lamp", "mild", "milk", "mint", "move", "note", "pace", "path", "quiz", "rare",
       "risk", "rope", "seed", "snow", "song", "star", "tame", "time", "tone", "vent",
-      "walk", "wave", "wild", "wind", "wise", "zone"
+      "walk", "wave", "wild", "wind", "wise", "zone", "mold", "fold", "told", "sold", "hold"
     ];
 
     async function isValidEnglishWord(word) {
+      if (fourLetterWords.includes(word)) return true;
       try {
         const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
         return res.ok;
@@ -258,14 +267,15 @@
       localStorage.setItem('gamesPlayed', gamesPlayed);
       localStorage.setItem('totalWords', totalWords);
 
-      const summary = document.getElementById("summary");
-      summary.innerHTML = `
+      document.getElementById("summary").innerHTML = `
         <h3>Game Over!</h3>
         <p>Total Points: ${points}</p>
         <p>Words Used: ${correctWords.join(", ").toUpperCase()}</p>
         <p>Session Duration: ${duration.formatted}</p>
         <p>Visit Count: ${visitCount}</p>
       `;
+
+      document.getElementById("play-again-btn").style.display = "block";
     }
 
     async function updatePossibleGuesses() {
@@ -309,6 +319,10 @@
 
     async function startGame() {
       sessionStartTime = Date.now();
+      document.getElementById("play-again-btn").style.display = "none";
+      document.getElementById("summary").innerHTML = "";
+      document.getElementById("stats-output").innerHTML = "";
+
       let word = "";
       while (!word) {
         const random = fourLetterWords[Math.floor(Math.random() * fourLetterWords.length)];
@@ -321,13 +335,13 @@
       correctWords = [currentWord];
       points = 0;
       level = 1;
+
       document.getElementById("current-word").textContent = currentWord.toUpperCase();
-      document.getElementById("summary").innerHTML = "";
-      document.getElementById("stats-output").innerHTML = "";
       document.getElementById("message").textContent = "";
       document.getElementById("level").textContent = `Level: ${level}`;
       document.getElementById("new-word").focus();
       document.getElementById("timer").textContent = `Time: 90s`;
+
       updateHistory();
       updatePossibleGuesses();
       startTimer();
