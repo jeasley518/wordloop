@@ -75,6 +75,7 @@
       margin-top: 1em;
       border: none;
       font-size: 0.9em;
+      cursor: pointer;
     }
 
     #footer {
@@ -140,6 +141,7 @@
     let timer;
     let correctWordsThisRound = 0;
     const usedWords = [];
+    const wordBank = ["LOOP", "TIME", "FAST", "WIND", "COLD", "SNAP", "HARD", "RING", "LOVE", "BOLD", "DROP", "FORK", "SNOW"];
 
     function startTimer() {
       clearInterval(timer);
@@ -192,13 +194,15 @@
     }
 
     function generateNewWord() {
-      currentWord = "LOOP";
+      currentWord = wordBank[Math.floor(Math.random() * wordBank.length)];
       score = 0;
       combos = 0;
       level = 1;
       correctWordsThisRound = 0;
       timerSeconds = 90;
       usedWords.length = 0;
+      clearInterval(timer);
+
       document.getElementById("current-word").textContent = currentWord;
       document.getElementById("score").textContent = "0";
       document.getElementById("combo-count").textContent = "0 combos";
@@ -207,6 +211,7 @@
       document.getElementById("timer").textContent = "90s left";
       document.getElementById("word-list").innerHTML = "";
       document.getElementById("next-word").value = "";
+
       startTimer();
     }
 
@@ -233,6 +238,10 @@
       } catch (error) {
         alert("Error fetching definition.");
       }
+    }
+
+    function resetGame() {
+      generateNewWord(); // Uses the same clean logic as starting new
     }
 
     window.onload = () => {
