@@ -6,9 +6,7 @@
   let level = 1;
   let timeLeft = 120;
   let timerInterval;
-  let hintUsed = false;
   const usedWords = new Set();
-  const alphabet = 'abcdefghijklmnopqrstuvwxyz';
 
   const currentWordDisplay = document.getElementById('current-word');
   const input = document.getElementById('word-input');
@@ -19,46 +17,10 @@
   const correctSound = document.getElementById('correct-sound');
   const wrongSound = document.getElementById('wrong-sound');
   const endSound = document.getElementById('end-sound');
-  const hintBtn = document.getElementById('hint-btn');
-
-  // Add CSS for slide-in animation dynamically
-  const style = document.createElement('style');
-  style.innerHTML = `
-    #hint-message {
-      position: fixed;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%) translateY(-200%);
-      background: #fffae5;
-      color: #333;
-      padding: 12px 20px;
-      border-radius: 12px;
-      font-size: 18px;
-      font-weight: bold;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-      opacity: 0;
-      transition: all 0.5s ease;
-      z-index: 1000;
-    }
-
-    #hint-message.show {
-      transform: translateX(-50%) translateY(0);
-      opacity: 1;
-    }
-  `;
-  document.head.appendChild(style);
-
-  const hintMessage = document.createElement('div');
-  hintMessage.id = 'hint-message';
-  document.body.appendChild(hintMessage);
 
   async function isValidWord(word) {
-    try {
-      const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
-      return res.ok;
-    } catch {
-      return false;
-    }
+    const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
+    return res.ok;
   }
 
   function updateDisplays() {
@@ -105,39 +67,12 @@
     score = 0;
     xp = 0;
     level = 1;
-    hintUsed = false;
     timeLeft = 120;
     usedWords.clear();
     currentWordDisplay.textContent = currentWord.toUpperCase();
     input.value = '';
     updateDisplays();
     startTimer();
-  }
-
-  function showHintMessage(message) {
-    hintMessage.textContent = message;
-    hintMessage.classList.add("show");
-    setTimeout(() => {
-      hintMessage.classList.remove("show");
-    }, 3000);
-  }
-
-  async function getHint(word) {
-    for (let i = 0; i < word.length; i++) {
-      for (let c of alphabet) {
-        if (c !== word[i]) {
-          const candidate = word.slice(0, i) + c + word.slice(i + 1);
-          if (
-            candidate !== word &&
-            !usedWords.has(candidate) &&
-            await isValidWord(candidate)
-          ) {
-            return candidate;
-          }
-        }
-      }
-    }
-    return null;
   }
 
   document.getElementById('submit-btn').addEventListener('click', async () => {
@@ -156,7 +91,6 @@
       xp += 10;
       if (xp >= level * 100) {
         level++;
-        hintUsed = false; // Reset hint use for new level
         showConfetti();
         resetTimer();
       }
@@ -183,24 +117,6 @@
     ];
     const randomWord = randomStartWords[Math.floor(Math.random() * randomStartWords.length)];
     resetGame(randomWord);
-  });
-
-  hintBtn.addEventListener('click', async () => {
-    if (hintUsed) {
-      showHintMessage("You've already used your hint this level!");
-      return;
-    }
-    hintBtn.disabled = true;
-    const hint = await getHint(currentWord);
-    if (hint) {
-      showHintMessage(`Try: ${hint.toUpperCase()}`);
-    } else {
-      showHintMessage("No valid hints available.");
-    }
-    hintUsed = true;
-    setTimeout(() => {
-      hintBtn.disabled = false;
-    }, 3000);
   });
 
   resetGame(currentWord);
