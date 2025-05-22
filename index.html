@@ -3,84 +3,107 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>WordLoop Game</title>
+  <title>WordLoop</title>
   <style>
     body {
       font-family: 'Arial', sans-serif;
+      background-color: #e6f7ff;
       text-align: center;
-      padding: 20px;
-      background-color: #f0f8ff;
+      padding: 30px 20px;
+      margin: 0;
+      position: relative;
+      overflow-x: hidden;
     }
+
     h1 {
-      margin-bottom: 5px;
+      font-size: 32px;
+      margin-bottom: 8px;
+      color: #111;
     }
+
     #instructions {
-      font-size: 14px;
-      color: #555;
-      margin-bottom: 20px;
+      font-size: 16px;
+      color: #444;
+      margin-bottom: 25px;
     }
+
     #current-word {
-      font-size: 48px;
+      font-size: 56px;
       font-weight: bold;
-      margin: 30px 0;
+      margin: 20px 0;
+      color: #111;
       text-transform: uppercase;
-      transition: transform 0.3s;
     }
-    .pop { animation: pop 0.3s ease; }
-    .shake { animation: shake 0.4s ease; }
-    @keyframes pop {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.3); }
-      100% { transform: scale(1); }
-    }
-    @keyframes shake {
-      0%, 100% { transform: translateX(0); }
-      25% { transform: translateX(-10px); }
-      75% { transform: translateX(10px); }
-    }
-    input[type="text"] {
-      font-size: 24px;
-      padding: 10px;
-      width: 60%;
-      max-width: 300px;
+
+    #timer {
+      font-size: 22px;
+      color: #111;
       margin-bottom: 20px;
     }
+
+    input[type="text"] {
+      font-size: 22px;
+      padding: 12px;
+      width: 80%;
+      max-width: 320px;
+      margin-bottom: 20px;
+      border: 2px solid #ccc;
+      border-radius: 8px;
+      text-align: center;
+    }
+
     button {
-      font-size: 18px;
-      padding: 12px 25px;
-      margin: 5px;
+      font-size: 20px;
+      padding: 12px 24px;
+      margin: 6px;
       border: none;
       border-radius: 8px;
       cursor: pointer;
     }
+
     #submit-btn {
       background-color: #28a745;
       color: white;
     }
+
     #new-word-btn {
       background-color: #007bff;
       color: white;
-      font-size: 12px;
-      padding: 6px 12px;
+      font-size: 14px;
+      padding: 8px 16px;
     }
+
     #scoreboard {
       font-size: 20px;
-      margin-top: 10px;
-    }
-    #timer {
-      font-size: 24px;
-      margin-bottom: 20px;
-      color: #333;
-    }
-    #level-display {
       margin-top: 20px;
-      font-weight: bold;
-      font-size: 18px;
+      color: #111;
     }
-    #combo-count {
-      font-size: 16px;
-      margin-top: 15px;
-      color: #333;
+
+    #level-display {
+      font-size: 20px;
+      margin-top: 10px;
+      color: #111;
+      font-weight: bold;
+    }
+
+    #start-word {
+      font-size: 14px;
+      color: #666;
+      margin-top: 4px;
+    }
+
+    .confetti {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      background-color: red;
+      animation: fall 1.5s ease-out forwards;
+      border-radius: 50%;
+    }
+
+    @keyframes fall {
+      0% { transform: translateY(0); opacity: 1; }
+      100% { transform: translateY(300px) rotate(720deg); opacity: 0; }
     }
   </style>
 </head>
@@ -89,14 +112,16 @@
   <div id="instructions">Change one letter at a time to create real words.</div>
   <div id="current-word">LOOP</div>
   <div id="timer">Time left: 120s</div>
+
   <input type="text" id="word-input" placeholder="Enter next word" />
   <br>
   <button id="submit-btn">Submit</button>
   <br>
   <button id="new-word-btn">New Word</button>
+
   <div id="scoreboard">Score: 0</div>
   <div id="level-display">Level: 1 | XP: 0 / 100</div>
-  <div id="combo-count">Checking possible combinations...</div>
+  <div id="start-word">Start word: LOOP</div>
 
   <audio id="correct-sound" src="https://www.soundjay.com/buttons/sounds/button-4.mp3"></audio>
   <audio id="wrong-sound" src="https://www.soundjay.com/buttons/sounds/button-10.mp3"></audio>
@@ -104,6 +129,7 @@
 
   <script>
     let currentWord = 'loop';
+    let startWord = 'loop';
     let score = 0;
     let xp = 0;
     let level = 1;
@@ -116,7 +142,7 @@
     const scoreboard = document.getElementById('scoreboard');
     const timerDisplay = document.getElementById('timer');
     const levelDisplay = document.getElementById('level-display');
-    const comboCount = document.getElementById('combo-count');
+    const startWordDisplay = document.getElementById('start-word');
     const correctSound = document.getElementById('correct-sound');
     const wrongSound = document.getElementById('wrong-sound');
     const endSound = document.getElementById('end-sound');
@@ -129,35 +155,13 @@
     function updateDisplays() {
       scoreboard.textContent = `Score: ${score}`;
       levelDisplay.textContent = `Level: ${level} | XP: ${xp % 100} / 100`;
+      startWordDisplay.textContent = `Start word: ${startWord.toUpperCase()}`;
     }
 
-    async function countValidOneLetterWords(word) {
-      const letters = 'abcdefghijklmnopqrstuvwxyz';
-      let count = 0;
-      for (let i = 0; i < word.length; i++) {
-        for (let l of letters) {
-          if (l !== word[i]) {
-            const testWord = word.slice(0, i) + l + word.slice(i + 1);
-            if (await isValidWord(testWord)) count++;
-          }
-        }
-      }
-      comboCount.textContent = `Possible 1-letter variations: ${count}`;
-    }
-
-    function resetGame(newWord = 'loop') {
+    function resetTimer() {
       clearInterval(timerInterval);
-      currentWord = newWord;
-      score = 0;
-      xp = 0;
-      level = 1;
       timeLeft = 120;
-      usedWords.clear();
-      currentWordDisplay.textContent = currentWord.toUpperCase();
-      input.value = '';
-      updateDisplays();
       startTimer();
-      countValidOneLetterWords(currentWord);
     }
 
     function startTimer() {
@@ -173,6 +177,33 @@
       }, 1000);
     }
 
+    function showConfetti() {
+      for (let i = 0; i < 30; i++) {
+        const confetti = document.createElement("div");
+        confetti.className = "confetti";
+        confetti.style.left = Math.random() * window.innerWidth + "px";
+        confetti.style.top = "-20px";
+        confetti.style.backgroundColor = `hsl(${Math.random() * 360}, 100%, 60%)`;
+        document.body.appendChild(confetti);
+        setTimeout(() => confetti.remove(), 1500);
+      }
+    }
+
+    function resetGame(newWord = 'loop') {
+      clearInterval(timerInterval);
+      currentWord = newWord;
+      startWord = newWord;
+      score = 0;
+      xp = 0;
+      level = 1;
+      timeLeft = 120;
+      usedWords.clear();
+      currentWordDisplay.textContent = currentWord.toUpperCase();
+      input.value = '';
+      updateDisplays();
+      startTimer();
+    }
+
     document.getElementById('submit-btn').addEventListener('click', async () => {
       const nextWord = input.value.toLowerCase();
       if (
@@ -184,19 +215,18 @@
       ) {
         currentWord = nextWord;
         currentWordDisplay.textContent = currentWord.toUpperCase();
-        currentWordDisplay.classList.add('pop');
-        setTimeout(() => currentWordDisplay.classList.remove('pop'), 300);
         usedWords.add(nextWord);
         score++;
         xp += 10;
-        if (xp >= level * 100) level++;
+        if (xp >= level * 100) {
+          level++;
+          showConfetti();
+          resetTimer();
+        }
         correctSound.play();
         updateDisplays();
         input.value = '';
-        countValidOneLetterWords(currentWord);
       } else {
-        currentWordDisplay.classList.add('shake');
-        setTimeout(() => currentWordDisplay.classList.remove('shake'), 400);
         wrongSound.play();
         alert('Invalid word! Must be real, same length, and one letter different.');
       }
@@ -212,7 +242,7 @@
         'bore','chat','grin','plan','cast','flow','seat','trip','wrap','snap',
         'wage','lift','zone','mile','deal','seal','pack','camp','park','claw',
         'flap','brag','stop','grab','yell','roar','maze','quiz','wipe','melt',
-        'scan','scar','blur','fizz','mint','kick','whip','bank','perk','jazz'
+        'scan','scar','blur','mint','kick','whip','bank','perk','jazz'
       ];
       const randomWord = randomStartWords[Math.floor(Math.random() * randomStartWords.length)];
       resetGame(randomWord);
