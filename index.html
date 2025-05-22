@@ -8,42 +8,69 @@
     body {
       font-family: Arial, sans-serif;
       text-align: center;
-      margin: 20px;
+      margin: 40px;
     }
+
     h1 {
       font-style: italic;
-      font-size: 1.5em;
+      font-size: 1.8em;
+      margin-bottom: 10px;
     }
+
     #game {
       margin-top: 30px;
     }
+
     #current-word {
-      font-size: 2em;
-      margin-bottom: 10px;
+      font-size: 2.2em;
+      font-weight: bold;
+      margin-bottom: 5px;
     }
+
     #possible-guesses {
-      font-size: 0.9em;
+      font-size: 0.95em;
       color: gray;
       margin-bottom: 20px;
     }
+
     input[type="text"] {
-      font-size: 1em;
+      font-size: 1.2em;
       padding: 10px;
       width: 250px;
     }
+
     button {
       padding: 10px 20px;
       font-size: 1em;
+      margin-left: 10px;
     }
+
+    #message {
+      margin-top: 10px;
+      font-weight: bold;
+      color: red;
+    }
+
+    #timer {
+      margin-top: 15px;
+      font-size: 1.1em;
+    }
+
     #history {
-      margin-top: 20px;
+      margin-top: 30px;
+      font-size: 1em;
     }
+
     .word-item {
       cursor: pointer;
       text-decoration: underline;
+      display: inline-block;
+      margin: 2px 6px;
     }
+
     #summary {
-      margin-top: 30px;
+      margin-top: 40px;
+      font-size: 1em;
     }
   </style>
 </head>
@@ -68,7 +95,6 @@
     let points = 0;
     const wordLength = 4;
 
-    // Small list of good starter 4-letter words to choose randomly from
     const fourLetterWords = [
       "bold", "cold", "dark", "dawn", "fame", "game", "gaze", "gold", "home", "jump",
       "lamp", "mild", "milk", "mint", "move", "note", "pace", "path", "quiz", "rare",
@@ -80,8 +106,7 @@
       try {
         const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
         return res.ok;
-      } catch (error) {
-        console.error("Dictionary lookup failed:", error);
+      } catch {
         return false;
       }
     }
@@ -147,7 +172,6 @@
         span.textContent = word;
         span.onclick = () => window.open(`https://www.dictionary.com/browse/${word}`, "_blank");
         historyDiv.appendChild(span);
-        historyDiv.innerHTML += "<br />";
       });
     }
 
@@ -199,8 +223,13 @@
 
       currentWord = word;
       correctWords = [currentWord];
+      points = 0;
+      time = 90;
       document.getElementById("current-word").textContent = currentWord;
+      document.getElementById("summary").innerHTML = "";
+      document.getElementById("message").textContent = "";
       document.getElementById("new-word").focus();
+      document.getElementById("timer").textContent = `Time: ${time}s`;
       updateHistory();
       updatePossibleGuesses();
       startTimer();
