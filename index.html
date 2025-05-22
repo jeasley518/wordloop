@@ -38,6 +38,12 @@
       color: #333;
     }
 
+    #timer, #level-display {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 6px;
+    }
+
     input[type="text"] {
       font-size: 22px;
       padding: 12px;
@@ -109,6 +115,9 @@
   <div id="current-word">LOOP</div>
   <div id="combo-count">Checking valid combinations...</div>
 
+  <div id="timer">Time left: 60s</div>
+  <div id="level-display">Level: 1</div>
+
   <input type="text" id="word-input" placeholder="Enter next word">
   <br>
   <button id="submit-btn">Submit</button>
@@ -125,6 +134,11 @@
     let currentWord = 'loop';
     let startWord = 'loop';
     let score = 0;
+    let level = 1;
+    let roundScore = 0;
+    let timeLeft = 60;
+    let timerInterval;
+
     const usedWords = new Set();
     const wordHistory = [];
     const alphabet = 'abcdefghijklmnopqrstuvwxyz';
@@ -136,10 +150,13 @@
     const wordHistoryDisplay = document.getElementById('word-history');
     const definitionDisplay = document.getElementById('definition');
     const comboDisplay = document.getElementById('combo-count');
+    const timerDisplay = document.getElementById('timer');
+    const levelDisplay = document.getElementById('level-display');
 
     function updateDisplays() {
       scoreboard.textContent = `Score: ${score}`;
       startWordDisplay.textContent = `Start word: ${startWord.toUpperCase()}`;
+      levelDisplay.textContent = `Level: ${level}`;
     }
 
     function updateHistory() {
@@ -192,9 +209,13 @@
     }
 
     async function resetGame(newWord = 'loop') {
+      clearInterval(timerInterval);
       currentWord = newWord;
       startWord = newWord;
       score = 0;
+      roundScore = 0;
+      level = 1;
+      timeLeft = 60;
       usedWords.clear();
       wordHistory.length = 0;
       currentWordDisplay.textContent = currentWord.toUpperCase();
@@ -204,6 +225,29 @@
       definitionDisplay.textContent = '';
       comboDisplay.textContent = 'Checking valid combinations...';
       await countValidCombinations(currentWord);
+      startTimer();
+    }
+
+    function startTimer() {
+      timerDisplay.textContent = `Time left: ${timeLeft}s`;
+      timerInterval = setInterval(() => {
+        timeLeft--;
+        timerDisplay.textContent = `Time left: ${timeLeft}s`;
+        if (timeLeft <= 0) {
+          clearInterval(timerInterval);
+          if (roundScore >= 10) {
+            level++;
+            roundScore = 0;
+            timeLeft = 60;
+            startTimer();
+            levelDisplay.textContent = `Level: ${level}`;
+            alert(`Level up! You reached level ${level}`);
+          } else {
+            alert(`Time's up! Final score: ${score}`);
+            resetGame();
+          }
+        }
+      }, 1000);
     }
 
     document.getElementById('submit-btn').addEventListener('click', async () => {
@@ -221,6 +265,7 @@
         wordHistory.push(nextWord);
         updateHistory();
         score++;
+        roundScore++;
         updateDisplays();
         input.value = '';
         definitionDisplay.textContent = '';
