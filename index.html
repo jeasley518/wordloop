@@ -2,317 +2,184 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>WordLoop</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>wordloop</title>
   <style>
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "San Francisco", "Helvetica Neue", sans-serif;
+      background-color: #fdfdf9;
+      color: #1d1d1f;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
       text-align: center;
-      padding: 30px 16px;
-      transition: background-color 0.8s ease;
-      color: #1a1a1a;
-      background-color: hsl(96, 70%, 90%);
+      min-height: 100vh;
     }
 
     h1 {
-      font-size: 28px;
-      font-style: italic;
+      font-size: 2em;
       font-weight: 600;
-      margin-bottom: 10px;
+      font-style: italic;
+      margin-bottom: 0.25em;
     }
 
-    #instructions {
-      font-size: 16px;
-      margin-bottom: 32px;
+    p {
+      margin: 0.5em 0 1.5em;
+      font-size: 1em;
       color: #555;
     }
 
     #current-word {
-      font-size: 72px;
+      font-size: 4em;
       font-weight: 700;
-      margin: 20px 0;
-      text-transform: uppercase;
+      margin: 0.5em 0;
+      letter-spacing: 0.05em;
     }
 
-    #combo-count {
-      font-size: 18px;
-      margin-bottom: 20px;
-      color: #333;
-    }
-
-    #timer, #level-display {
-      font-size: 14px;
-      color: #666;
-      margin-bottom: 6px;
+    #status {
+      font-size: 0.9em;
+      color: #555;
+      margin-bottom: 1em;
     }
 
     input[type="text"] {
-      font-size: 22px;
-      padding: 12px;
+      padding: 0.75em;
       width: 80%;
-      max-width: 320px;
-      margin-bottom: 20px;
-      border: 1.5px solid #ccc;
+      max-width: 300px;
+      border: 1px solid #ccc;
       border-radius: 8px;
-      text-align: center;
+      font-size: 1em;
+      margin-bottom: 1em;
     }
 
     button {
+      padding: 0.75em 2em;
+      font-size: 1em;
+      background-color: #34c759;
+      color: white;
       border: none;
+      border-radius: 10px;
       cursor: pointer;
-      border-radius: 8px;
+      transition: background-color 0.3s ease;
     }
 
-    #submit-btn {
+    button:hover {
       background-color: #28a745;
-      color: white;
-      font-size: 20px;
-      padding: 14px 36px;
-      margin: 10px 0;
     }
 
     #new-word-btn {
-      background-color: #eee;
-      color: #333;
-      font-size: 13px;
-      padding: 6px 16px;
-      margin: 5px;
-      border-radius: 20px;
+      background: none;
+      color: #007aff;
+      margin-top: 1em;
+      border: none;
+      font-size: 0.9em;
     }
 
-    #scoreboard, #start-word {
-      font-size: 18px;
-      margin-top: 10px;
-    }
-
-    #history {
-      margin-top: 30px;
-      font-size: 16px;
-    }
-
-    #history span {
-      display: inline-block;
-      margin: 4px 6px;
-      padding: 6px 10px;
-      background: #f1f1f1;
-      border-radius: 8px;
-      cursor: pointer;
-    }
-
-    #definition {
-      margin-top: 10px;
-      font-size: 14px;
-      color: #444;
-      max-width: 400px;
-      margin-left: auto;
-      margin-right: auto;
+    #footer {
+      margin-top: 2em;
+      font-size: 0.85em;
+      color: #666;
     }
   </style>
 </head>
 <body>
-
-  <h1>WordLoop</h1>
-  <div id="instructions">Change one letter at a time to create real words.</div>
+  <h1>wordloop</h1>
+  <p>Change one letter at time to create real words.</p>
 
   <div id="current-word">LOOP</div>
-  <div id="combo-count">Checking valid combinations...</div>
+  <div id="status">Level 1 · <span id="timer">120s left</span> · <span id="combo-count">0 combos</span></div>
 
-  <div id="timer">Time left: 90s</div>
-  <div id="level-display">Level: 1</div>
+  <input type="text" id="next-word" placeholder="Type a new word..." />
+  <br />
+  <button onclick="submitWord()">Submit</button>
+  <br />
+  <button id="new-word-btn" onclick="generateNewWord()">Try a new word</button>
 
-  <input type="text" id="word-input" placeholder="Enter next word">
-  <br>
-  <button id="submit-btn">Submit</button>
-  <br>
-  <button id="new-word-btn">New Word</button>
-
-  <div id="scoreboard">Score: 0</div>
-  <div id="start-word">Start word: LOOP</div>
-
-  <div id="history"><strong>Word History:</strong><br><div id="word-history"></div></div>
-  <div id="definition"></div>
+  <div id="footer">
+    Score: <span id="score">0</span> | Start word: <span id="start-word">LOOP</span>
+  </div>
 
   <script>
-    let currentWord = 'loop';
-    let startWord = 'loop';
+    let currentWord = "LOOP";
     let score = 0;
+    let combos = 0;
     let level = 1;
-    let roundScore = 0;
-    let timeLeft = 90;
-    let totalTime = 0;
-    let timerInterval;
-    const usedWords = new Set();
-    const wordHistory = [];
-    const alphabet = 'abcdefghijklmnopqrstuvwxyz';
-    const pastelColors = [
-      'hsl(96, 70%, 90%)','hsl(191, 70%, 90%)','hsl(246, 70%, 90%)',
-      'hsl(117, 70%, 90%)','hsl(242, 70%, 90%)','hsl(360, 70%, 90%)',
-      'hsl(343, 70%, 90%)','hsl(306, 70%, 90%)','hsl(247, 70%, 90%)',
-      'hsl(114, 70%, 90%)'
-    ];
-
-    const currentWordDisplay = document.getElementById('current-word');
-    const input = document.getElementById('word-input');
-    const scoreboard = document.getElementById('scoreboard');
-    const startWordDisplay = document.getElementById('start-word');
-    const wordHistoryDisplay = document.getElementById('word-history');
-    const definitionDisplay = document.getElementById('definition');
-    const comboDisplay = document.getElementById('combo-count');
-    const timerDisplay = document.getElementById('timer');
-    const levelDisplay = document.getElementById('level-display');
-
-    function updateDisplays() {
-      scoreboard.textContent = `Score: ${score}`;
-      startWordDisplay.textContent = `Start word: ${startWord.toUpperCase()}`;
-      levelDisplay.textContent = `Level: ${level}`;
-    }
-
-    function updateHistory() {
-      wordHistoryDisplay.innerHTML = '';
-      wordHistory.forEach(word => {
-        const span = document.createElement('span');
-        span.textContent = word.toUpperCase();
-        span.onclick = () => lookupDefinition(word);
-        wordHistoryDisplay.appendChild(span);
-      });
-    }
-
-    async function isValidWord(word) {
-      try {
-        const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
-        return res.ok;
-      } catch {
-        return false;
-      }
-    }
-
-    async function countValidCombinations(word) {
-      let count = 0;
-      for (let i = 0; i < word.length; i++) {
-        for (let c of alphabet) {
-          if (c !== word[i]) {
-            const testWord = word.slice(0, i) + c + word.slice(i + 1);
-            if (await isValidWord(testWord)) {
-              count++;
-            }
-          }
-        }
-      }
-      comboDisplay.textContent = `Valid 1-letter word combinations: ${count}`;
-    }
-
-    async function lookupDefinition(word) {
-      try {
-        const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
-        if (res.ok) {
-          const data = await res.json();
-          const meaning = data[0].meanings[0].definitions[0].definition;
-          definitionDisplay.textContent = `${word.toUpperCase()}: ${meaning}`;
-        } else {
-          definitionDisplay.textContent = `No definition found for ${word.toUpperCase()}.`;
-        }
-      } catch {
-        definitionDisplay.textContent = `Could not load definition.`;
-      }
-    }
-
-    async function resetGame(newWord = 'loop') {
-      clearInterval(timerInterval);
-      currentWord = newWord;
-      startWord = newWord;
-      score = 0;
-      roundScore = 0;
-      level = 1;
-      timeLeft = 90;
-      totalTime = 0;
-      usedWords.clear();
-      wordHistory.length = 0;
-      currentWordDisplay.textContent = currentWord.toUpperCase();
-      input.value = '';
-      updateDisplays();
-      updateHistory();
-      definitionDisplay.textContent = '';
-      comboDisplay.textContent = 'Checking valid combinations...';
-      document.body.style.backgroundColor = pastelColors[(level - 1) % pastelColors.length];
-      await countValidCombinations(currentWord);
-      startTimer();
-    }
+    let timerSeconds = 120;
+    let timer;
 
     function startTimer() {
-      timerDisplay.textContent = `Time left: ${timeLeft}s`;
-      timerInterval = setInterval(() => {
-        timeLeft--;
-        totalTime++;
-        timerDisplay.textContent = `Time left: ${timeLeft}s`;
-        if (timeLeft <= 0) {
-          clearInterval(timerInterval);
-          if (roundScore >= 10) {
-            level++;
-            roundScore = 0;
-            timeLeft = 90;
-            document.body.style.backgroundColor = pastelColors[(level - 1) % pastelColors.length];
-            alert(`Level up! You reached level ${level}`);
-            startTimer();
-          } else {
-            showSummary();
-          }
+      timer = setInterval(() => {
+        timerSeconds--;
+        document.getElementById("timer").textContent = `${timerSeconds}s left`;
+        if (timerSeconds <= 0) {
+          clearInterval(timer);
+          alert(`Time's up!\nScore: ${score}\nWords used: ${combos}`);
+          resetGame();
         }
       }, 1000);
     }
 
-    function showSummary() {
-      alert(
-        `Time's up!\n\n` +
-        `Level: ${level}\n` +
-        `Total Points: ${score}\n` +
-        `Total Time: ${totalTime}s\n` +
-        `Words Used:\n${wordHistory.map(w => w.toUpperCase()).join(', ')}`
-      );
-      resetGame();
+    function submitWord() {
+      const newWord = document.getElementById("next-word").value.toUpperCase();
+      if (newWord.length !== currentWord.length || !isOneLetterDifferent(currentWord, newWord)) {
+        alert("Word must be the same length and differ by exactly one letter.");
+        return;
+      }
+      // You could integrate a real dictionary API check here
+      score++;
+      combos++;
+      currentWord = newWord;
+      document.getElementById("current-word").textContent = currentWord;
+      document.getElementById("next-word").value = "";
+      document.getElementById("score").textContent = score;
+      document.getElementById("combo-count").textContent = `${combos} combos`;
     }
 
-    document.getElementById('submit-btn').addEventListener('click', async () => {
-      const nextWord = input.value.toLowerCase();
-      if (
-        nextWord.length === currentWord.length &&
-        nextWord !== currentWord &&
-        [...nextWord].filter((ch, i) => ch !== currentWord[i]).length === 1 &&
-        !usedWords.has(nextWord) &&
-        await isValidWord(nextWord)
-      ) {
-        currentWord = nextWord;
-        currentWordDisplay.textContent = currentWord.toUpperCase();
-        usedWords.add(nextWord);
-        wordHistory.push(nextWord);
-        updateHistory();
-        score++;
-        roundScore++;
-        updateDisplays();
-        input.value = '';
-        definitionDisplay.textContent = '';
-        comboDisplay.textContent = 'Checking valid combinations...';
-        await countValidCombinations(currentWord);
-      } else {
-        alert('Invalid word! Must be real, same length, and one letter different.');
+    function isOneLetterDifferent(word1, word2) {
+      let diffCount = 0;
+      for (let i = 0; i < word1.length; i++) {
+        if (word1[i] !== word2[i]) diffCount++;
       }
-    });
+      return diffCount === 1;
+    }
 
-    document.getElementById('new-word-btn').addEventListener('click', () => {
-      const startWords = [
-        'loop','game','word','test','code','fast','hope','love','fish','bake','rain',
-        'road','boat','tree','fire','sand','time','dive','lift','mood','clap','bump',
-        'ring','mine','hike','jump','push','pull','fizz','buzz','lamp','frog','grip',
-        'mask','bone','vote','zoom','race','lace','ride','send','bond','lend','luck',
-        'back','make','pick','hide','fork','bore','chat','grin','plan','cast','flow',
-        'seat','trip','wrap','snap','wage','zone','mile','deal','seal','pack','camp',
-        'park','claw','flap','brag','stop','grab','yell','roar','maze','quiz','wipe',
-        'melt','scan','scar','blur','mint','kick','whip','bank','perk','jazz'
-      ];
-      const randomWord = startWords[Math.floor(Math.random() * startWords.length)];
-      resetGame(randomWord);
-    });
+    function generateNewWord() {
+      // Placeholder: this would ideally randomize from a curated list
+      const newStart = "LOOP";
+      currentWord = newStart;
+      score = 0;
+      combos = 0;
+      timerSeconds = 120;
+      clearInterval(timer);
+      startTimer();
+      document.getElementById("current-word").textContent = newStart;
+      document.getElementById("score").textContent = "0";
+      document.getElementById("combo-count").textContent = "0 combos";
+      document.getElementById("start-word").textContent = newStart;
+      document.getElementById("next-word").value = "";
+      document.getElementById("timer").textContent = "120s left";
+    }
 
-    resetGame(currentWord);
+    function resetGame() {
+      currentWord = "LOOP";
+      score = 0;
+      combos = 0;
+      timerSeconds = 120;
+      document.getElementById("current-word").textContent = currentWord;
+      document.getElementById("score").textContent = "0";
+      document.getElementById("combo-count").textContent = "0 combos";
+      document.getElementById("start-word").textContent = currentWord;
+      document.getElementById("next-word").value = "";
+      document.getElementById("timer").textContent = "120s left";
+      startTimer();
+    }
+
+    window.onload = () => {
+      startTimer();
+    };
   </script>
 </body>
 </html>
