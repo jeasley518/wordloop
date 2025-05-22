@@ -38,7 +38,6 @@
       25% { transform: translateX(-10px); }
       75% { transform: translateX(10px); }
     }
-
     input[type="text"] {
       font-size: 24px;
       padding: 10px;
@@ -64,49 +63,24 @@
       font-size: 12px;
       padding: 6px 12px;
     }
-
-    #scoreboard, #streak-badge {
+    #scoreboard {
       font-size: 20px;
       margin-top: 10px;
-    }
-    #streak-badge {
-      color: gold;
-      font-weight: bold;
     }
     #timer {
       font-size: 24px;
       margin-bottom: 20px;
       color: #333;
     }
-
     #level-display {
       margin-top: 20px;
       font-weight: bold;
       font-size: 18px;
     }
-
-    #xp-bar, #streak-bar {
-      height: 20px;
-      width: 80%;
-      max-width: 300px;
-      margin: 5px auto;
-      border: 1px solid #333;
-      background-color: #ddd;
-      border-radius: 10px;
-      overflow: hidden;
-    }
-
-    .fill {
-      height: 100%;
-      transition: width 0.3s;
-    }
-
-    #xp-fill {
-      background-color: orange;
-    }
-
-    #streak-fill {
-      background-color: gold;
+    #combo-count {
+      font-size: 16px;
+      margin-top: 15px;
+      color: #333;
     }
   </style>
 </head>
@@ -115,19 +89,14 @@
   <div id="instructions">Change one letter at a time to create real words.</div>
   <div id="current-word">LOOP</div>
   <div id="timer">Time left: 120s</div>
-
   <input type="text" id="word-input" placeholder="Enter next word" />
   <br>
   <button id="submit-btn">Submit</button>
   <br>
   <button id="new-word-btn">New Word</button>
-
   <div id="scoreboard">Score: 0</div>
-  <div id="streak-badge"></div>
-
   <div id="level-display">Level: 1 | XP: 0 / 100</div>
-  <div id="xp-bar"><div id="xp-fill" class="fill" style="width: 0%;"></div></div>
-  <div id="streak-bar"><div id="streak-fill" class="fill" style="width: 0%;"></div></div>
+  <div id="combo-count">Checking possible combinations...</div>
 
   <audio id="correct-sound" src="https://www.soundjay.com/buttons/sounds/button-4.mp3"></audio>
   <audio id="wrong-sound" src="https://www.soundjay.com/buttons/sounds/button-10.mp3"></audio>
@@ -136,24 +105,21 @@
   <script>
     let currentWord = 'loop';
     let score = 0;
-    let timeLeft = 120;
-    let timerInterval;
-    let streak = 0;
     let xp = 0;
     let level = 1;
+    let timeLeft = 120;
+    let timerInterval;
     const usedWords = new Set();
 
     const currentWordDisplay = document.getElementById('current-word');
     const input = document.getElementById('word-input');
     const scoreboard = document.getElementById('scoreboard');
     const timerDisplay = document.getElementById('timer');
-    const streakBadge = document.getElementById('streak-badge');
+    const levelDisplay = document.getElementById('level-display');
+    const comboCount = document.getElementById('combo-count');
     const correctSound = document.getElementById('correct-sound');
     const wrongSound = document.getElementById('wrong-sound');
     const endSound = document.getElementById('end-sound');
-    const xpFill = document.getElementById('xp-fill');
-    const streakFill = document.getElementById('streak-fill');
-    const levelDisplay = document.getElementById('level-display');
 
     async function isValidWord(word) {
       const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
@@ -162,17 +128,27 @@
 
     function updateDisplays() {
       scoreboard.textContent = `Score: ${score}`;
-      streakBadge.textContent = streak >= 3 ? `🔥 3-Word Streak! 🔥` : '';
       levelDisplay.textContent = `Level: ${level} | XP: ${xp % 100} / 100`;
-      xpFill.style.width = `${(xp % 100)}%`;
-      streakFill.style.width = `${Math.min(streak * 10, 100)}%`;
+    }
+
+    async function countValidOneLetterWords(word) {
+      const letters = 'abcdefghijklmnopqrstuvwxyz';
+      let count = 0;
+      for (let i = 0; i < word.length; i++) {
+        for (let l of letters) {
+          if (l !== word[i]) {
+            const testWord = word.slice(0, i) + l + word.slice(i + 1);
+            if (await isValidWord(testWord)) count++;
+          }
+        }
+      }
+      comboCount.textContent = `Possible 1-letter variations: ${count}`;
     }
 
     function resetGame(newWord = 'loop') {
       clearInterval(timerInterval);
       currentWord = newWord;
       score = 0;
-      streak = 0;
       xp = 0;
       level = 1;
       timeLeft = 120;
@@ -181,6 +157,7 @@
       input.value = '';
       updateDisplays();
       startTimer();
+      countValidOneLetterWords(currentWord);
     }
 
     function startTimer() {
@@ -211,27 +188,31 @@
         setTimeout(() => currentWordDisplay.classList.remove('pop'), 300);
         usedWords.add(nextWord);
         score++;
-        streak++;
         xp += 10;
         if (xp >= level * 100) level++;
         correctSound.play();
         updateDisplays();
         input.value = '';
+        countValidOneLetterWords(currentWord);
       } else {
-        streak = 0;
         currentWordDisplay.classList.add('shake');
         setTimeout(() => currentWordDisplay.classList.remove('shake'), 400);
         wrongSound.play();
         alert('Invalid word! Must be real, same length, and one letter different.');
-        updateDisplays();
       }
     });
 
     document.getElementById('new-word-btn').addEventListener('click', () => {
       const randomStartWords = [
-        'loop', 'game', 'word', 'test', 'code',
-        'fast', 'hope', 'love', 'fish', 'bake',
-        'rain', 'road', 'boat', 'tree', 'fire'
+        'loop','game','word','test','code','fast','hope','love','fish','bake',
+        'rain','road','boat','tree','fire','sand','time','dive','lift','mood',
+        'clap','bump','ring','mine','hike','jump','push','pull','fizz','buzz',
+        'lamp','frog','grip','mask','bone','vote','zoom','race','lace','ride',
+        'send','bond','lend','luck','back','make','pick','hide','mask','fork',
+        'bore','chat','grin','plan','cast','flow','seat','trip','wrap','snap',
+        'wage','lift','zone','mile','deal','seal','pack','camp','park','claw',
+        'flap','brag','stop','grab','yell','roar','maze','quiz','wipe','melt',
+        'scan','scar','blur','fizz','mint','kick','whip','bank','perk','jazz'
       ];
       const randomWord = randomStartWords[Math.floor(Math.random() * randomStartWords.length)];
       resetGame(randomWord);
