@@ -130,15 +130,17 @@
     const visitCount = parseInt(localStorage.getItem('visitCount') || '0') + 1;
     localStorage.setItem('visitCount', visitCount);
 
-    const fourLetterWords = [
+    const localWordList = new Set([
       "bold", "cold", "dark", "dawn", "fame", "game", "gaze", "gold", "home", "jump",
       "lamp", "mild", "milk", "mint", "move", "note", "pace", "path", "quiz", "rare",
       "risk", "rope", "seed", "snow", "song", "star", "tame", "time", "tone", "vent",
-      "walk", "wave", "wild", "wind", "wise", "zone", "mold", "fold", "told", "sold", "hold"
-    ];
+      "walk", "wave", "wild", "wind", "wise", "zone", "mold", "fold", "told", "hold",
+      "bail", "fail", "mail", "foil", "soil", "toil", "cool", "pool", "tool", "fool",
+      "moon", "soon", "boon", "noon", "loon", "goon", "good"
+    ]);
 
     async function isValidEnglishWord(word) {
-      if (fourLetterWords.includes(word)) return true;
+      if (localWordList.has(word.toLowerCase())) return true;
       try {
         const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
         return res.ok;
@@ -325,7 +327,8 @@
 
       let word = "";
       while (!word) {
-        const random = fourLetterWords[Math.floor(Math.random() * fourLetterWords.length)];
+        const candidates = Array.from(localWordList);
+        const random = candidates[Math.floor(Math.random() * candidates.length)];
         if (await isValidEnglishWord(random)) {
           word = random;
         }
