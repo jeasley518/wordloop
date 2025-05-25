@@ -87,6 +87,7 @@
     let totalPoints = 0;
     let startTime = Date.now();
     let wordsUsed = [currentWord];
+
     document.getElementById("current-word").innerText = currentWord;
     const timerEl = document.getElementById("timer");
     const combinationsEl = document.getElementById("combinations");
@@ -103,14 +104,18 @@
     const timerInterval = setInterval(updateTimer, 1000);
 
     async function isValidWord(word) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000); // timeout after 3 seconds
       const url = `https://api.dictionaryapi.dev/api/v2/entries/en/${word.toLowerCase()}`;
+
       try {
-        const response = await fetch(url);
+        const response = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
         if (!response.ok) return false;
         const data = await response.json();
         return Array.isArray(data) && data.length > 0;
       } catch (e) {
-        console.error("Dictionary check failed:", e);
+        console.warn(`Validation failed for "${word}":`, e.message);
         return false;
       }
     }
@@ -159,37 +164,50 @@
     countValidCombinations(currentWord);
 
     async function handleSubmit() {
-      const input = document.getElementById("input").value.toUpperCase();
+      const inputField = document.getElementById("input");
+      const input = inputField.value.toUpperCase();
+      const submitButton = document.getElementById("submit");
+
+      submitButton.disabled = true;
+      submitButton.innerText = "Checking...";
+
       if (
         input.length === currentWord.length &&
         isOneLetterDifferent(currentWord, input) &&
-        !(wordsUsed.includes(input)) &&
-        await isValidWord(input)
+        !(wordsUsed.includes(input))
       ) {
-        currentWord = input;
-        wordsUsed.push(input);
-        correctCount++;
-        totalPoints++;
-        document.getElementById("current-word").innerText = currentWord;
-        countValidCombinations(currentWord);
+        const isValid = await isValidWord(input);
+        if (isValid) {
+          currentWord = input;
+          wordsUsed.push(input);
+          correctCount++;
+          totalPoints++;
+          document.getElementById("current-word").innerText = currentWord;
+          await countValidCombinations(currentWord);
 
-        const def = await getDefinition(input);
-        const wordEl = document.createElement("div");
-        wordEl.className = "word-item";
-        wordEl.innerHTML = `<strong>${input}</strong><div class="definition">${def}</div>`;
-        document.getElementById("word-list").appendChild(wordEl);
+          const def = await getDefinition(input);
+          const wordEl = document.createElement("div");
+          wordEl.className = "word-item";
+          wordEl.innerHTML = `<strong>${input}</strong><div class="definition">${def}</div>`;
+          document.getElementById("word-list").appendChild(wordEl);
 
-        if (correctCount >= 10) {
-          correctCount = 0;
-          level++;
-          time = 90;
-          document.body.style.backgroundColor = "#eaeaea";
-          setTimeout(() => {
-            document.body.style.backgroundColor = "#f9f9f9";
-          }, 500);
+          if (correctCount >= 10) {
+            correctCount = 0;
+            level++;
+            time = 90;
+            document.body.style.backgroundColor = "#eaeaea";
+            setTimeout(() => {
+              document.body.style.backgroundColor = "#f9f9f9";
+            }, 500);
+          }
+        } else {
+          alert("That’s not a valid English word.");
         }
       }
-      document.getElementById("input").value = "";
+
+      inputField.value = "";
+      submitButton.disabled = false;
+      submitButton.innerText = "Submit";
     }
 
     document.getElementById("submit").addEventListener("click", handleSubmit);
