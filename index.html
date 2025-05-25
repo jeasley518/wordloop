@@ -18,11 +18,16 @@
     #current-word {
       font-size: 48px;
       font-weight: bold;
-      margin: 20px 0;
+      margin: 10px 0;
     }
     #timer {
       font-size: 18px;
-      margin-bottom: 10px;
+      margin-bottom: 5px;
+    }
+    #combinations {
+      font-size: 14px;
+      color: gray;
+      margin-bottom: 15px;
     }
     #input {
       padding: 10px;
@@ -60,7 +65,8 @@
   <h1>WordLoop</h1>
   <div id="instructions">change one letter at a time to make new words</div>
   <div id="timer">Time: 90</div>
-  <div id="current-word">HOME</div>
+  <div id="current-word">----</div>
+  <div id="combinations"></div>
   <input type="text" id="input" maxlength="4" />
   <br />
   <button id="submit">Submit</button>
@@ -69,16 +75,21 @@
   <button onclick="location.reload()">Another Round</button>
 
   <script>
-    let currentWord = "HOME";
+    const wordList = [
+      "HOME", "FIRE", "WORD", "PLAY", "SAND", "BOAT", "JUMP", "WIND", "TREE", "LOVE",
+      "MIND", "FISH", "HAND", "DARK", "MOON", "BARK", "RANK", "TAPE", "BORN", "CHAT"
+    ];
+
+    let currentWord = wordList[Math.floor(Math.random() * wordList.length)];
     let time = 90;
     let level = 1;
     let correctCount = 0;
     let totalPoints = 0;
     let startTime = Date.now();
     let wordsUsed = [currentWord];
-
     document.getElementById("current-word").innerText = currentWord;
     const timerEl = document.getElementById("timer");
+    const combinationsEl = document.getElementById("combinations");
 
     function updateTimer() {
       timerEl.innerText = `Time: ${time}`;
@@ -126,6 +137,27 @@
       return diff === 1;
     }
 
+    async function countValidCombinations(word) {
+      const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      let count = 0;
+      const promises = [];
+
+      for (let i = 0; i < word.length; i++) {
+        for (let c of alphabet) {
+          if (c !== word[i].toUpperCase()) {
+            const newWord = word.slice(0, i) + c + word.slice(i + 1);
+            promises.push(isValidWord(newWord).then(valid => {
+              if (valid) count++;
+            }));
+          }
+        }
+      }
+      await Promise.all(promises);
+      combinationsEl.innerText = `Possible valid combinations: ${count}`;
+    }
+
+    countValidCombinations(currentWord);
+
     async function handleSubmit() {
       const input = document.getElementById("input").value.toUpperCase();
       if (
@@ -139,6 +171,7 @@
         correctCount++;
         totalPoints++;
         document.getElementById("current-word").innerText = currentWord;
+        countValidCombinations(currentWord);
 
         const def = await getDefinition(input);
         const wordEl = document.createElement("div");
