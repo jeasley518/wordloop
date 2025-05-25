@@ -8,349 +8,174 @@
     body {
       font-family: Arial, sans-serif;
       text-align: center;
-      margin: 40px;
+      margin: 30px;
+      background-color: #f9f9f9;
     }
-
     h1 {
       font-style: italic;
-      font-size: 1.8em;
-      margin-bottom: 5px;
+      font-size: 24px;
     }
-
-    #instructions {
-      font-style: italic;
-      font-size: 1em;
-      color: #666;
-      margin-bottom: 20px;
-    }
-
-    #game {
-      margin-top: 20px;
-    }
-
     #current-word {
-      font-size: 2.4em;
+      font-size: 48px;
       font-weight: bold;
-      margin-bottom: 5px;
-      text-transform: uppercase;
+      margin: 20px 0;
     }
-
-    #possible-guesses {
-      font-size: 0.95em;
-      color: gray;
-      margin-bottom: 20px;
+    #timer {
+      font-size: 18px;
+      margin-bottom: 10px;
     }
-
-    input[type="text"] {
-      font-size: 1.2em;
+    #input {
       padding: 10px;
-      width: 250px;
+      font-size: 18px;
+      width: 200px;
     }
-
-    button {
-      display: block;
-      margin: 20px auto 10px auto;
+    #submit {
       padding: 10px 20px;
-      font-size: 1em;
-    }
-
-    #message {
-      font-weight: bold;
-      color: red;
-    }
-
-    #timer, #level {
-      font-size: 1.1em;
+      font-size: 18px;
       margin-top: 10px;
     }
-
-    #history {
-      margin-top: 30px;
-      font-size: 1em;
-    }
-
-    .word-item {
-      cursor: pointer;
-      text-decoration: underline;
-      display: inline-block;
-      margin: 4px 8px;
-      font-weight: bold;
-    }
-
-    .definition {
-      font-style: italic;
-      color: #444;
-      margin: 4px 0 10px 0;
-      max-width: 600px;
-      margin-left: auto;
-      margin-right: auto;
-    }
-
-    #summary, #stats-output {
-      margin-top: 40px;
-      font-size: 1em;
-    }
-
-    #play-again-btn {
-      display: none;
+    #word-list {
       margin-top: 20px;
-      padding: 10px 20px;
-      font-size: 1em;
+    }
+    .word-item {
+      margin: 5px 0;
+    }
+    .definition {
+      font-size: 14px;
+      color: gray;
+    }
+    #stats {
+      margin-top: 20px;
+    }
+    #instructions {
+      font-size: 14px;
+      font-style: italic;
+      margin-top: -10px;
+      margin-bottom: 10px;
     }
   </style>
 </head>
 <body>
-  <h1>WordLoop</h1>
-  <div id="instructions">*change one letter at a time to make a new word*</div>
 
-  <div id="game">
-    <div id="current-word">Loading...</div>
-    <div id="possible-guesses">Calculating possible guesses...</div>
-    <input type="text" id="new-word" placeholder="Type a new word" autocomplete="off"/>
-    <button onclick="submitWord()">Submit</button>
-    <div id="message"></div>
-    <div id="timer">Time: 90s</div>
-    <div id="level">Level: 1</div>
-    <button onclick="showStats()">Show Stats</button>
-    <div id="history"><strong>Words Used:</strong><br /></div>
-    <div id="summary"></div>
-    <div id="stats-output"></div>
-    <button id="play-again-btn" onclick="startGame()">Play Another Round</button>
-  </div>
+  <h1>WordLoop</h1>
+  <div id="instructions">change one letter at a time to make new words</div>
+  <div id="timer">Time: 90</div>
+  <div id="current-word">HOME</div>
+  <input type="text" id="input" maxlength="4" />
+  <br />
+  <button id="submit">Submit</button>
+  <div id="word-list"></div>
+  <div id="stats"></div>
+  <button onclick="location.reload()">Another Round</button>
 
   <script>
-    let currentWord = "";
-    let correctWords = [];
+    let currentWord = "HOME";
     let time = 90;
-    let timerInterval;
-    let points = 0;
     let level = 1;
-    let sessionStartTime;
+    let correctCount = 0;
+    let totalPoints = 0;
+    let startTime = Date.now();
+    let wordsUsed = [currentWord];
 
-    const visitCount = parseInt(localStorage.getItem('visitCount') || '0') + 1;
-    localStorage.setItem('visitCount', visitCount);
+    document.getElementById("current-word").innerText = currentWord;
+    const timerEl = document.getElementById("timer");
 
-    const localWordList = new Set([
-      "bold", "cold", "dark", "dawn", "fame", "game", "gaze", "gold", "home", "jump",
-      "lamp", "mild", "milk", "mint", "move", "note", "pace", "path", "quiz", "rare",
-      "risk", "rope", "seed", "snow", "song", "star", "tame", "time", "tone", "vent",
-      "walk", "wave", "wild", "wind", "wise", "zone", "mold", "fold", "told", "hold",
-      "bail", "fail", "mail", "foil", "soil", "toil", "cool", "pool", "tool", "fool",
-      "moon", "soon", "boon", "noon", "loon", "goon", "good"
-    ]);
+    function updateTimer() {
+      timerEl.innerText = `Time: ${time}`;
+      if (time <= 0) {
+        clearInterval(timerInterval);
+        endGame();
+      }
+      time--;
+    }
 
-    async function isValidEnglishWord(word) {
-      if (localWordList.has(word.toLowerCase())) return true;
+    const timerInterval = setInterval(updateTimer, 1000);
+
+    async function isValidWord(word) {
+      const url = `https://api.dictionaryapi.dev/api/v2/entries/en/${word.toLowerCase()}`;
       try {
-        const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
-        return res.ok;
-      } catch {
+        const response = await fetch(url);
+        if (!response.ok) return false;
+        const data = await response.json();
+        return Array.isArray(data) && data.length > 0;
+      } catch (e) {
+        console.error("Dictionary check failed:", e);
         return false;
       }
     }
 
     async function getDefinition(word) {
+      const url = `https://api.dictionaryapi.dev/api/v2/entries/en/${word.toLowerCase()}`;
       try {
-        const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
-        const data = await res.json();
-        const meanings = data[0]?.meanings;
-        return meanings?.[0]?.definitions?.[0]?.definition || "No definition found.";
+        const response = await fetch(url);
+        if (!response.ok) return "No definition available.";
+        const data = await response.json();
+        return data[0]?.meanings[0]?.definitions[0]?.definition || "No definition available.";
       } catch {
         return "No definition available.";
       }
     }
 
-    function startTimer() {
-      clearInterval(timerInterval);
-      time = 90;
-      document.getElementById("timer").textContent = `Time: ${time}s`;
-      timerInterval = setInterval(() => {
-        time--;
-        document.getElementById("timer").textContent = `Time: ${time}s`;
-        if (time <= 0) {
-          clearInterval(timerInterval);
-          endGame();
+    function isOneLetterDifferent(word1, word2) {
+      if (word1.length !== word2.length) return false;
+      let diff = 0;
+      for (let i = 0; i < word1.length; i++) {
+        if (word1[i].toLowerCase() !== word2[i].toLowerCase()) diff++;
+        if (diff > 1) return false;
+      }
+      return diff === 1;
+    }
+
+    async function handleSubmit() {
+      const input = document.getElementById("input").value.toUpperCase();
+      if (
+        input.length === currentWord.length &&
+        isOneLetterDifferent(currentWord, input) &&
+        !(wordsUsed.includes(input)) &&
+        await isValidWord(input)
+      ) {
+        currentWord = input;
+        wordsUsed.push(input);
+        correctCount++;
+        totalPoints++;
+        document.getElementById("current-word").innerText = currentWord;
+
+        const def = await getDefinition(input);
+        const wordEl = document.createElement("div");
+        wordEl.className = "word-item";
+        wordEl.innerHTML = `<strong>${input}</strong><div class="definition">${def}</div>`;
+        document.getElementById("word-list").appendChild(wordEl);
+
+        if (correctCount >= 10) {
+          correctCount = 0;
+          level++;
+          time = 90;
+          document.body.style.backgroundColor = "#eaeaea";
+          setTimeout(() => {
+            document.body.style.backgroundColor = "#f9f9f9";
+          }, 500);
         }
-      }, 1000);
+      }
+      document.getElementById("input").value = "";
     }
 
-    async function submitWord() {
-      const input = document.getElementById("new-word");
-      const newWord = input.value.toLowerCase().trim();
-      input.value = "";
-      input.focus();
-
-      if (newWord.length !== currentWord.length) {
-        showMessage("Word must be the same length.");
-        return;
-      }
-
-      let diffCount = 0;
-      for (let i = 0; i < newWord.length; i++) {
-        if (newWord[i] !== currentWord[i]) diffCount++;
-      }
-
-      if (diffCount !== 1) {
-        showMessage("You can only change one letter.");
-        return;
-      }
-
-      if (!await isValidEnglishWord(newWord)) {
-        showMessage("That's not a valid English word.");
-        return;
-      }
-
-      if (correctWords.includes(newWord)) {
-        showMessage("You already used that word.");
-        return;
-      }
-
-      currentWord = newWord;
-      correctWords.push(newWord);
-      points++;
-
-      if (points % 10 === 0) {
-        level++;
-        document.body.style.backgroundColor = level % 2 === 0 ? "#f4f4f4" : "#ffffff";
-        startTimer();
-      }
-
-      document.getElementById("current-word").textContent = currentWord.toUpperCase();
-      document.getElementById("level").textContent = `Level: ${level}`;
-      updateHistory();
-      showMessage("");
-      updatePossibleGuesses();
-    }
-
-    function updateHistory() {
-      const historyDiv = document.getElementById("history");
-      historyDiv.innerHTML = "<strong>Words Used:</strong><br />";
-      correctWords.forEach(word => {
-        const span = document.createElement("span");
-        span.className = "word-item";
-        span.textContent = word.toUpperCase();
-        span.onclick = async () => {
-          const existing = document.getElementById(`def-${word}`);
-          if (existing) {
-            existing.remove();
-            return;
-          }
-          const def = await getDefinition(word);
-          const defDiv = document.createElement("div");
-          defDiv.className = "definition";
-          defDiv.id = `def-${word}`;
-          defDiv.textContent = `"${word}": ${def}`;
-          span.insertAdjacentElement("afterend", defDiv);
-        };
-        historyDiv.appendChild(span);
-      });
-    }
-
-    function showMessage(msg) {
-      document.getElementById("message").textContent = msg;
-    }
-
-    function getSessionDuration() {
-      const seconds = Math.floor((Date.now() - sessionStartTime) / 1000);
-      const mins = Math.floor(seconds / 60);
-      const secs = seconds % 60;
-      return { formatted: `${mins}m ${secs}s`, raw: seconds };
-    }
+    document.getElementById("submit").addEventListener("click", handleSubmit);
+    document.getElementById("input").addEventListener("keypress", function (e) {
+      if (e.key === "Enter") handleSubmit();
+    });
 
     function endGame() {
-      const duration = getSessionDuration();
-      const longest = parseInt(localStorage.getItem('longestSession') || '0');
-      if (duration.raw > longest) {
-        localStorage.setItem('longestSession', duration.raw);
-      }
-
-      const gamesPlayed = parseInt(localStorage.getItem('gamesPlayed') || '0') + 1;
-      const totalWords = parseInt(localStorage.getItem('totalWords') || '0') + correctWords.length;
-      localStorage.setItem('gamesPlayed', gamesPlayed);
-      localStorage.setItem('totalWords', totalWords);
-
-      document.getElementById("summary").innerHTML = `
-        <h3>Game Over!</h3>
-        <p>Total Points: ${points}</p>
-        <p>Words Used: ${correctWords.join(", ").toUpperCase()}</p>
-        <p>Session Duration: ${duration.formatted}</p>
-        <p>Visit Count: ${visitCount}</p>
+      const endTime = Date.now();
+      const duration = Math.round((endTime - startTime) / 1000);
+      const stats = `
+        <p><strong>Game Over!</strong></p>
+        <p>Total Time: ${duration}s</p>
+        <p>Total Points: ${totalPoints}</p>
+        <p>Words Used: ${wordsUsed.join(", ")}</p>
       `;
-
-      document.getElementById("play-again-btn").style.display = "block";
+      document.getElementById("stats").innerHTML = stats;
     }
-
-    async function updatePossibleGuesses() {
-      const chars = 'abcdefghijklmnopqrstuvwxyz';
-      let count = 0;
-      const checks = [];
-
-      for (let i = 0; i < currentWord.length; i++) {
-        for (let c of chars) {
-          if (c !== currentWord[i]) {
-            const candidate = currentWord.slice(0, i) + c + currentWord.slice(i + 1);
-            if (!correctWords.includes(candidate)) {
-              checks.push(candidate);
-            }
-          }
-        }
-      }
-
-      const validations = await Promise.all(checks.map(word => isValidEnglishWord(word)));
-      validations.forEach(valid => { if (valid) count++; });
-
-      document.getElementById("possible-guesses").textContent =
-        `Valid one-letter variations: ${count}`;
-    }
-
-    function showStats() {
-      const longest = parseInt(localStorage.getItem('longestSession') || '0');
-      const minutes = Math.floor(longest / 60);
-      const seconds = longest % 60;
-      const games = localStorage.getItem('gamesPlayed') || 0;
-      const totalWords = localStorage.getItem('totalWords') || 0;
-
-      document.getElementById("stats-output").innerHTML = `
-        <h3>Your Stats</h3>
-        <p>Total Visits: ${visitCount}</p>
-        <p>Games Played: ${games}</p>
-        <p>Total Words Guessed: ${totalWords}</p>
-        <p>Longest Session: ${minutes}m ${seconds}s</p>
-      `;
-    }
-
-    async function startGame() {
-      sessionStartTime = Date.now();
-      document.getElementById("play-again-btn").style.display = "none";
-      document.getElementById("summary").innerHTML = "";
-      document.getElementById("stats-output").innerHTML = "";
-
-      let word = "";
-      while (!word) {
-        const candidates = Array.from(localWordList);
-        const random = candidates[Math.floor(Math.random() * candidates.length)];
-        if (await isValidEnglishWord(random)) {
-          word = random;
-        }
-      }
-
-      currentWord = word;
-      correctWords = [currentWord];
-      points = 0;
-      level = 1;
-
-      document.getElementById("current-word").textContent = currentWord.toUpperCase();
-      document.getElementById("message").textContent = "";
-      document.getElementById("level").textContent = `Level: ${level}`;
-      document.getElementById("new-word").focus();
-      document.getElementById("timer").textContent = `Time: 90s`;
-
-      updateHistory();
-      updatePossibleGuesses();
-      startTimer();
-    }
-
-    window.onload = startGame;
   </script>
+
 </body>
 </html>
